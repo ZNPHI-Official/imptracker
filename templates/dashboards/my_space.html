@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}My Space{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item active" aria-current="page">My Space</li>
+{% endblock %}
+{% block content %}
+<!-- Hero Section -->
+<div class="mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="display-5 fw-bold mb-1">My Space</h1>
+      <p class="text-muted fs-5 mb-0">Personal activity dashboard for Q{{ current_quarter }}, {{ today|date:"Y" }}</p>
+    </div>
+    <a href="{% url 'create_activity' %}" class="btn btn-lg btn-primary">
+      <i class="bi bi-plus-circle me-2"></i>New Activity
+    </a>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="card border-0 h-100" style="background-color: #475569;">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="mb-1 opacity-75 small">Total Assigned</p>
+              <h2 class="mb-0">{{ total_assigned }}</h2>
+            </div>
+            <i class="bi bi-list-check fs-3 opacity-50"></i>
+          </div>
+          <small class="opacity-75">Activities under your care</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card border-0 h-100" style="background-color: #475569;">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="mb-1 opacity-75 small">Total Budget</p>
+              <h3 class="mb-0 small">K{{ total_budget|intcomma }}</h3>
+            </div>
+            <i class="bi bi-wallet2 fs-3 opacity-50"></i>
+          </div>
+          <small class="opacity-75">Remaining: K{{ total_remaining|intcomma }}</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card border-0 h-100" style="background-color: #475569;">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="mb-1 opacity-75 small">Disbursed</p>
+              <h3 class="mb-0 small">K{{ total_disbursed|intcomma }}</h3>
+            </div>
+            <i class="bi bi-check-circle-fill fs-3 opacity-50"></i>
+          </div>
+          <div class="progress bg-white bg-opacity-25" style="height: 4px;">
+            <div class="progress-bar bg-white" role="progressbar" style="width: {{ coverage_pct }}%" aria-valuenow="{{ coverage_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <small class="opacity-75 d-block mt-2">{{ coverage_pct }}% Coverage</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card border-0 h-100" style="background-color: #475569;">
+        <div class="card-body text-white">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="mb-1 opacity-75 small">Due This Month</p>
+              <h2 class="mb-0">{{ due_month_count }}</h2>
+            </div>
+            <i class="bi bi-exclamation-circle-fill fs-3 opacity-50"></i>
+          </div>
+          <small class="opacity-75">{{ due_month_count|pluralize:"activity,activities" }} to execute</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Urgent Section (Due This Month) -->
+{% if due_month_count > 0 %}
+<div class="mb-4">
+  <div class="card border-0 shadow-sm" style="border-top: 4px solid #f59e0b;">
+    <div class="card-header bg-light">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+          <span class="badge bg-warning text-dark me-2" style="font-size: 0.8rem; padding: 0.5rem 0.75rem;">URGENT</span>
+          <h5 class="mb-0">Due This Month ({{ today|date:"F" }})</h5>
+        </div>
+        <small class="text-muted">{{ due_month_count }} {{ due_month_count|pluralize:"activity,activities" }} | K{{ due_month_budget|intcomma }} budget</small>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Budget</th>
+              <th>Disbursed</th>
+              <th>Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for activity in recent_assigned %}
+            {% if activity.planned_month.year == today.year and activity.planned_month.month == today.month %}
+            <tr style="cursor: pointer;" onclick="window.location='{% url 'activity_detail' activity.pk %}';" class="border-bottom">
+              <td class="fw-bold">{{ activity.activity_id }}</td>
+              <td>{{ activity.name }}</td>
+              <td><span class="badge bg-primary">{{ activity.status.name }}</span></td>
+              <td>K{{ activity.total_budget|intcomma }}</td>
+              <td><span class="text-success fw-bold">K{{ activity.disbursed_amount|default:0|intcomma }}</span></td>
+              <td><span class="badge bg-light text-dark">K{{ activity.total_budget|add:activity.disbursed_amount|default:0|intcomma }}</span></td>
+              <td><a href="{% url 'activity_detail' activity.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
+            </tr>
+            {% endif %}
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Quarterly Section -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-calendar-range me-2 text-info"></i>Due This Quarter (Q{{ current_quarter }})</h5>
+        <small class="text-muted">{{ due_quarter_count }} {{ due_quarter_count|pluralize:"activity,activities" }}</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Planned</th>
+                <th>Status</th>
+                <th>Budget (K)</th>
+                <th>Disbursed (K)</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for activity in recent_assigned %}
+              {% if activity.quarter == current_quarter and activity.year == today.year %}
+              <tr style="cursor: pointer;" onclick="window.location='{% url 'activity_detail' activity.pk %}';">
+                <td class="fw-bold">{{ activity.activity_id }}</td>
+                <td>{{ activity.name|truncatewords:5 }}</td>
+                <td>{{ activity.planned_month|date:"M Y" }}</td>
+                <td><span class="badge bg-secondary">{{ activity.status.name }}</span></td>
+                <td>K{{ activity.total_budget|intcomma }}</td>
+                <td><span class="text-success">K{{ activity.disbursed_amount|default:0|intcomma }}</span></td>
+              </tr>
+              {% endif %}
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">No activities planned for this quarter.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Executive Summary Card -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2 text-success"></i>Q{{ current_quarter }} Summary</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted">Budget Coverage</small>
+            <small class="fw-bold">{{ coverage_pct }}%</small>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ coverage_pct }}%;" aria-valuenow="{{ coverage_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="mb-3">
+          <small class="text-muted d-block mb-2"><i class="bi bi-cash me-1"></i>Quarter Budget</small>
+          <h4 class="mb-0">K{{ due_quarter_budget|intcomma }}</h4>
+        </div>
+
+        <div class="mb-3">
+          <small class="text-muted d-block mb-2"><i class="bi bi-check-circle me-1"></i>Quarter Disbursed</small>
+          <h4 class="mb-0 text-success">K{{ due_quarter_disbursed|intcomma }}</h4>
+        </div>
+
+        <div>
+          <small class="text-muted d-block mb-2"><i class="bi bi-hourglass-split me-1"></i>Remaining</small>
+          <h4 class="mb-0 text-warning">K{{ due_quarter_budget|add:due_quarter_disbursed|default:0|intcomma }}</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- All Activities Section -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>All Assigned Activities</h5>
+    <small class="text-muted">{{ total_assigned }} total</small>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Planned Month</th>
+            <th>Budget (K)</th>
+            <th>Disbursed (K)</th>
+            <th>Balance (K)</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for activity in recent_assigned %}
+          <tr style="cursor: pointer;" onclick="window.location='{% url 'activity_detail' activity.pk %}';">
+            <td><strong>{{ activity.activity_id }}</strong></td>
+            <td>{{ activity.name }}</td>
+            <td><span class="badge bg-secondary">{{ activity.status.name }}</span></td>
+            <td><small class="text-muted">{{ activity.planned_month|date:"M Y" }}</small></td>
+            <td>K{{ activity.total_budget|intcomma }}</td>
+            <td><span class="text-success">K{{ activity.disbursed_amount|default:0|intcomma }}</span></td>
+            <td><span class="badge bg-light text-dark">K{{ activity.total_budget|add:activity.disbursed_amount|default:0|intcomma }}</span></td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+              <strong>No activities assigned yet</strong>
+              <p class="mb-0">Create your first activity to get started.</p>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

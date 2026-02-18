@@ -43,6 +43,16 @@ DEFAULT_GROUPS = {
         "masters.procurementtype",
         "uploads.uploadbatch",
     ],
+    "Project Coordinator": [
+        "activities.activity",
+        "activities.activityattachment",
+        "activities.notificationlog",
+        "masters.funder",
+        "masters.activitystatus",
+        "masters.currency",
+        "masters.procurementtype",
+        "uploads.uploadbatch",
+    ],
     "Activity Manager": [
         "activities.activity",
         "activities.activityattachment",

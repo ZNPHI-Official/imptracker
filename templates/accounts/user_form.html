@@ -55,40 +55,53 @@
             </div>
             {% endif %}
 
-            <div class="mb-3">
-                <label class="form-label">Roles <span class="text-danger">*</span></label>
-                <div id="rolesBox" class="form-control" style="max-height: 200px; overflow-y: auto;">
-                    {% if roles %}
-                        {% for role in roles %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}"
-                                {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
-                            <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-muted mb-0">No roles available</p>
-                    {% endif %}
+            <div class="row">
+                <div class="col-12 col-lg-6 mb-3">
+                    <label class="form-label">Roles <span class="text-danger">*</span></label>
+                    <div id="rolesBox" class="form-control" style="max-height: 200px; overflow-y: auto;">
+                        {% if roles %}
+                            {% for role in roles %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}"
+                                    {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted mb-0">No roles available</p>
+                        {% endif %}
+                    </div>
+                    <div id="rolesHelp" class="form-text">Select at least one role.</div>
+                    <div id="rolesError" class="invalid-feedback d-none">Please select at least one role.</div>
                 </div>
-                <div id="rolesHelp" class="form-text">Select at least one role.</div>
-                <div id="rolesError" class="invalid-feedback d-none">Please select at least one role.</div>
+
+                <div class="col-12 col-lg-6 mb-3">
+                    <label class="form-label">Clusters</label>
+                    <div class="form-control" style="max-height: 200px; overflow-y: auto;">
+                        {% if clusters %}
+                            {% for cluster in clusters %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="clusters" value="{{ cluster.id }}" id="cluster{{ cluster.id }}"
+                                    {% if is_edit and cluster.id in user_cluster_ids %}checked{% endif %}>
+                                <label class="form-check-label" for="cluster{{ cluster.id }}">{{ cluster.name }} {{ cluster.short_name }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted mb-0">No clusters available</p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Clusters</label>
-                <div class="form-control" style="max-height: 200px; overflow-y: auto;">
-                    {% if clusters %}
-                        {% for cluster in clusters %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="clusters" value="{{ cluster.id }}" id="cluster{{ cluster.id }}"
-                                {% if is_edit and cluster.id in user_cluster_ids %}checked{% endif %}>
-                            <label class="form-check-label" for="cluster{{ cluster.id }}">{{ cluster.name }} {{ cluster.short_name }}</label>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-muted mb-0">No clusters available</p>
-                    {% endif %}
-                </div>
+            <div class="mb-3" id="coordinatedFunderSection" style="display: none;">
+                <label class="form-label">Coordinated Funder</label>
+                <select name="coordinated_funder" class="form-select" id="coordinatedFunder">
+                    <option value="">Select Funder</option>
+                    {% for funder in funders %}
+                    <option value="{{ funder.id }}" {% if is_edit and funder.id == user_coordinated_funder_id %}selected{% endif %}>{{ funder.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Select the funder that this Project Coordinator will manage.</div>
             </div>
 
             <div class="mb-3">
@@ -146,6 +159,29 @@
             rolesBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
             setRolesValidity(true);
+        }
+    });
+
+    // Show/hide coordinated funder section based on Project Coordinator role
+    const coordinatedFunderSection = document.getElementById('coordinatedFunderSection');
+    
+    const updateFunderVisibility = () => {
+        const projectCoordinatorChecked = Array.from(form.querySelectorAll('input[name="roles"]:checked')).some(cb => {
+            const label = cb.closest('.form-check')?.querySelector('.form-check-label');
+            return label && label.textContent.trim() === 'Project Coordinator';
+        });
+        if (coordinatedFunderSection) {
+            coordinatedFunderSection.style.display = projectCoordinatorChecked ? 'block' : 'none';
+        }
+    };
+
+    // Initial check
+    updateFunderVisibility();
+
+    // Update on role change
+    form.addEventListener('change', (e) => {
+        if (e.target && e.target.matches('input[name="roles"]')) {
+            updateFunderVisibility();
         }
     });
 })();

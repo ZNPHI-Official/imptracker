@@ -24,7 +24,8 @@ class Activity(models.Model):
     disbursed_amount=models.DecimalField(max_digits=14,decimal_places=2,null=True,blank=True)
     currency=models.ForeignKey(Currency, null=True, blank=True, on_delete=models.PROTECT)
     responsible_officer=models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.SET_NULL)
-    retired=models.BooleanField(default=False)
+    retired=models.BooleanField(default=False, help_text="True if activity has been financially retired")
+    deleted=models.BooleanField(default=False, help_text="Soft delete flag")
     technical_report_available=models.BooleanField(default=False)
     notes=models.TextField(blank=True)
     

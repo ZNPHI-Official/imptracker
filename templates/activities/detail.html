@@ -4,6 +4,22 @@
 
 {% block title %}Activity Details{% endblock %}
 
+{% block page_css %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+<style>
+/* Fix Select2 dropdown z-index within modals */
+.select2-container--bootstrap-5 .select2-dropdown {
+    z-index: 3000;
+}
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+}
+</style>
+{% endblock %}
+
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'activities_list' %}">Activities</a></li>
 <li class="breadcrumb-item active" aria-current="page">{{ activity.activity_id }}</li>
@@ -460,9 +476,33 @@
 {% endblock %}
 
 {% block page_js %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
 $(document).ready(function() {
     const activityId = {{ activity.pk }};
+    
+    // Initialize Select2 for officer selection
+    $('#officerSelect').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Search for a user...',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#officerModal')
+    });
+    
+    // Handle modal events for officer selection
+    $('#officerModal').on('shown.bs.modal', function() {
+        // Small delay to ensure modal is fully rendered
+        setTimeout(function() {
+            $('#officerSelect').select2('open');
+        }, 100);
+    });
+    
+    $('#officerModal').on('hidden.bs.modal', function() {
+        $('#officerSelect').select2('close');
+    });
     
     // Handle attachment upload
     $('#attachmentForm').submit(function(e) {
@@ -618,23 +658,38 @@ $(document).ready(function() {
         });
     });
     
-    // Helper function to show alerts
+    // Helper function to show toast notifications (success/info/warning/danger)
     function showAlert(type, message) {
-        const alertHtml = `
-            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        $('.page-header').after(alertHtml);
-        
-        // Auto-dismiss after 3 seconds
-        setTimeout(function() {
-            $('.alert').fadeOut('slow', function() {
-                $(this).remove();
-            });
-        }, 3000);
+        // Ensure toast container exists
+        let container = document.getElementById('dynamicToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'dynamicToastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = 2000;
+            document.body.appendChild(container);
+        }
+
+        const toastId = 'toast-' + Date.now();
+        const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle');
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-${icon} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>`;
+
+        container.insertAdjacentHTML('beforeend', toastHtml);
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+
+        toastEl.addEventListener('hidden.bs.toast', function() {
+            toastEl.remove();
+        });
     }
 });
 </script>

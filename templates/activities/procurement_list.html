@@ -42,6 +42,8 @@
                     <option value="partial" {% if filters.procurement_type == "partial" %}selected{% endif %}>Partial</option>
                 </select>
             </div>
+
+            {% if user_role != 'coordinator' %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Status</label>
                 <select name="status" class="form-select">
@@ -51,6 +53,9 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
+
+            {% if show_funder_filter %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Funder</label>
                 <select name="funder" class="form-select">
@@ -60,15 +65,9 @@
                     {% endfor %}
                 </select>
             </div>
-            {% comment %} <div class="col-12 col-md-3">
-                <label class="form-label mb-1">Cluster</label>
-                <select name="cluster" class="form-select">
-                    <option value="">All</option>
-                    {% for c in clusters %}
-                        <option value="{{ c.id }}" {% if filters.cluster == c.id|stringformat:"s" %}selected{% endif %}>{{ c.short_name }}</option>
-                    {% endfor %}
-                </select>
-            </div> {% endcomment %}
+            {% endif %}
+
+            {% if user_role != 'coordinator' %}
             <div class="col-6 col-md-2">
                 <label class="form-label mb-1">Quarter</label>
                 <select name="quarter" class="form-select">
@@ -78,6 +77,8 @@
                     <option value="3" {% if filters.quarter == "3" %}selected{% endif %}>Q3</option>
                     <option value="4" {% if filters.quarter == "4" %}selected{% endif %}>Q4</option>
                 </select>
+            </div>
+            {% endif %}
             </div>
             {% comment %} <div class="col-6 col-md-3">
                 <label class="form-label mb-1">Assignee</label>

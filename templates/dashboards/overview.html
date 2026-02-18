@@ -99,7 +99,7 @@
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <p class="stats-label text-info mb-1">Procurements</p>
-              <h2 class="stats-value">K{{ total_procurement_value|intcomma|default:0 }}</h2>
+              <h2 class="stats-value">K{{ total_procurement_value|floatformat:2|default:0 }}</h2>
               <small class="text-muted">for {{ procurement_activities_count|default:0 }} procurements.</small>
             </div>
             <div class="stats-icon text-info">
@@ -142,6 +142,7 @@
 </div>
 
 <div class="row g-3 mb-4">
+    {% if show_cluster_chart %}
     <!-- Budget vs Disbursed by Cluster -->
     <div class="col-lg-8">
         <div class="card">
@@ -155,9 +156,11 @@
             </div>
         </div>
     </div>
+    {% else %}
+    {% endif %}
     
     <!-- Procurement Activities -->
-    <div class="col-lg-4">
+    <div class="{% if show_cluster_chart %}col-lg-4{% else %}col-lg-6{% endif %}">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -188,6 +191,7 @@
 </div>
 
 <div class="row g-3 mb-4">
+    {% if show_funder_chart %}
     <!-- Funding Distribution by Funder -->
     <div class="col-lg-6">
         <div class="card">
@@ -201,9 +205,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
     
     <!-- Activities by Quarter -->
-    <div class="col-lg-6">
+    <div class="{% if show_funder_chart %}col-lg-6{% else %}col-lg-12{% endif %}">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -299,6 +304,42 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Format numbers with currency prefix K (Kwacha) and dynamic suffix (K, M, B)
+    function formatKwachaShort(val) {
+        var absVal = Math.abs(val);
+        var suffix = '';
+        var divisor = 1;
+
+        if (absVal >= 1000000000) {
+            suffix = 'B';
+            divisor = 1000000000;
+        } else if (absVal >= 1000000) {
+            suffix = 'M';
+            divisor = 1000000;
+        } else if (absVal >= 1000) {
+            suffix = 'K';
+            divisor = 1000;
+        }
+
+        var scaled = val / divisor;
+        var formatted;
+
+        if (Math.abs(scaled) >= 100) {
+            formatted = scaled.toFixed(0);
+        } else if (Math.abs(scaled) >= 10) {
+            formatted = scaled.toFixed(1);
+        } else {
+            formatted = scaled.toFixed(2);
+        }
+
+        return 'K' + formatted + suffix;
+    }
+
+    // Full-length Kwacha formatter for tooltips
+    function formatKwachaFull(val) {
+        var n = Number(val) || 0;
+        return 'K' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
     
     // 1. Activity Status Distribution - Donut Chart
     var statusOptions = {
@@ -424,7 +465,7 @@ document.addEventListener("DOMContentLoaded", function() {
         yaxis: {
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -448,7 +489,7 @@ document.addEventListener("DOMContentLoaded", function() {
             intersect: false,
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
@@ -457,7 +498,9 @@ document.addEventListener("DOMContentLoaded", function() {
             strokeDashArray: 4
         }
     };
-    new ApexCharts(document.querySelector("#budget-disbursed-cluster-chart"), budgetDisbursedOptions).render();
+    if (document.querySelector("#budget-disbursed-cluster-chart")) {
+        new ApexCharts(document.querySelector("#budget-disbursed-cluster-chart"), budgetDisbursedOptions).render();
+    }
 
     // 4. Procurement Status - Donut Chart
     var procurementOptions = {
@@ -529,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function() {
         yaxis: {
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -559,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function() {
             intersect: false,
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
@@ -588,7 +631,7 @@ document.addEventListener("DOMContentLoaded", function() {
             categories: funding_distribution_data.labels,
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -606,7 +649,7 @@ document.addEventListener("DOMContentLoaded", function() {
             enabled: true,
             offsetX: 30,
             formatter: function (val) {
-                return "K" + (val / 1000).toFixed(0) + "K";
+                return formatKwachaShort(val);
             },
             style: {
                 fontSize: '12px',
@@ -616,7 +659,7 @@ document.addEventListener("DOMContentLoaded", function() {
         tooltip: {
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
@@ -624,7 +667,9 @@ document.addEventListener("DOMContentLoaded", function() {
             borderColor: '#e5e7eb'
         }
     };
-    new ApexCharts(document.querySelector("#funding-distribution-chart"), fundingOptions).render();
+    if (document.querySelector("#funding-distribution-chart")) {
+        new ApexCharts(document.querySelector("#funding-distribution-chart"), fundingOptions).render();
+    }
 
     // 7. Quarterly Distribution - Column Chart
     var quarterlyOptions = {

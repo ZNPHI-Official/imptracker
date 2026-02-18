@@ -10,23 +10,38 @@ import json
 
 from services.notifications import send_user_created_notification
 
-def is_user_manager(user):
-    """Check if user has User Manager or System Admin role"""
-    return user.is_superuser or user.groups.filter(name__in=['User Manager', 'System Admin']).exists()
+def can_manage_users(user):
+    """Check if user can manage users: superuser, staff, or in User Manager/System Admin groups"""
+    return user.is_superuser or user.is_staff or user.groups.filter(name__in=['User Manager', 'System Admin']).exists()
+
+def can_see_user(viewer, target):
+    """Check if viewer can see/manage the target user"""
+    if viewer.is_superuser:
+        return True
+    if viewer.is_staff:
+        return not target.is_superuser
+    return not (target.is_staff or target.is_superuser)
 
 def is_system_admin(user):
     """Check if user is System Admin"""
     return user.is_superuser or user.groups.filter(name='System Admin').exists()
 
 @login_required
-@user_passes_test(is_user_manager)
+@user_passes_test(can_manage_users)
 def user_list(request):
     """List all users with search and filter"""
     query = request.GET.get('q', '')
     role = request.GET.get('role', '')
     cluster = request.GET.get('cluster', '')
     
-    users = User.objects.all().prefetch_related('groups', 'clusters').order_by('username')
+    users = User.objects.all().prefetch_related('groups', 'clusters', 'coordinated_funder').order_by('username')
+    
+    # Filter users based on viewer's permissions
+    if not request.user.is_superuser:
+        if request.user.is_staff:
+            users = users.exclude(is_superuser=True)
+        else:
+            users = users.exclude(Q(is_staff=True) | Q(is_superuser=True))
     
     if query:
         users = users.filter(
@@ -56,7 +71,7 @@ def user_list(request):
     return render(request, 'accounts/user_list.html', context)
 
 @login_required
-@user_passes_test(is_user_manager)
+@user_passes_test(can_manage_users)
 def user_create(request):
     """Create a new user"""
     if request.method == 'POST':
@@ -121,22 +136,40 @@ def user_create(request):
         if cluster_ids:
             user.clusters.set(Cluster.objects.filter(id__in=cluster_ids))
         
+        # Assign coordinated funder if Project Coordinator
+        funder_id = request.POST.get('coordinated_funder')
+        if funder_id and 'Project Coordinator' in [g.name for g in Group.objects.filter(id__in=role_ids)]:
+            from masters.models import Funder
+            try:
+                user.coordinated_funder = Funder.objects.get(id=funder_id)
+            except Funder.DoesNotExist:
+                pass
+        
+        user.save()
+        
         messages.success(request, f'User "{username}" created successfully.')
         return redirect('accounts:user_list')
     
     roles = Group.objects.all().order_by('name')
     clusters = Cluster.objects.all().order_by('short_name')
+    from masters.models import Funder
+    funders = Funder.objects.filter(active=True).order_by('name')
     context = {
         'roles': roles,
         'clusters': clusters,
+        'funders': funders,
     }
     return render(request, 'accounts/user_form.html', context)
 
 @login_required
-@user_passes_test(is_user_manager)
+@user_passes_test(can_manage_users)
 def user_edit(request, pk):
     """Edit an existing user"""
     user = get_object_or_404(User, pk=pk)
+    
+    if not can_see_user(request.user, user):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("You do not have permission to manage this user.")
     
     if request.method == 'POST':
         user.username = (request.POST.get('username') or '').strip()
@@ -168,6 +201,17 @@ def user_edit(request, pk):
         cluster_ids = request.POST.getlist('clusters')
         user.clusters.set(Cluster.objects.filter(id__in=cluster_ids))
         
+        # Assign coordinated funder if Project Coordinator
+        funder_id = request.POST.get('coordinated_funder')
+        if funder_id and 'Project Coordinator' in [g.name for g in Group.objects.filter(id__in=role_ids)]:
+            from masters.models import Funder
+            try:
+                user.coordinated_funder = Funder.objects.get(id=funder_id)
+            except Funder.DoesNotExist:
+                pass
+        else:
+            user.coordinated_funder = None
+        
         user.save()
         
         messages.success(request, f'User "{user.username}" updated successfully.')
@@ -175,25 +219,34 @@ def user_edit(request, pk):
     
     roles = Group.objects.all().order_by('name')
     clusters = Cluster.objects.all().order_by('short_name')
+    from masters.models import Funder
+    funders = Funder.objects.filter(active=True).order_by('name')
     user_role_ids = list(user.groups.values_list('id', flat=True))
     user_cluster_ids = list(user.clusters.values_list('id', flat=True))
+    user_coordinated_funder_id = user.coordinated_funder.id if user.coordinated_funder else None
     
     context = {
         'user_obj': user,
         'roles': roles,
         'clusters': clusters,
+        'funders': funders,
         'user_role_ids': user_role_ids,
         'user_cluster_ids': user_cluster_ids,
+        'user_coordinated_funder_id': user_coordinated_funder_id,
         'is_edit': True,
     }
     return render(request, 'accounts/user_form.html', context)
 
 @login_required
-@user_passes_test(is_user_manager)
+@user_passes_test(can_manage_users)
 def user_reset_password(request, pk):
     """Reset user password"""
     if request.method == 'POST':
         user = get_object_or_404(User, pk=pk)
+        
+        if not can_see_user(request.user, user):
+            return JsonResponse({'success': False, 'error': 'You do not have permission to manage this user.'})
+        
         new_password = request.POST.get('new_password')
         
         if not new_password:
@@ -207,11 +260,16 @@ def user_reset_password(request, pk):
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @login_required
-@user_passes_test(is_user_manager)
+@user_passes_test(can_manage_users)
 def user_delete(request, pk):
     """Delete a user (or deactivate)"""
     if request.method == 'POST':
         user = get_object_or_404(User, pk=pk)
+        
+        if not can_see_user(request.user, user):
+            messages.error(request, 'You do not have permission to manage this user.')
+            return redirect('accounts:user_list')
+        
         username = user.username
         
         # Safer to deactivate instead of delete

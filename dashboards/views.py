@@ -3,11 +3,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.db.models import Sum, Count, Q
 from activities.models import Activity
+from activities.views import get_user_role_category, apply_role_based_filters
 from audit.models import AuditLog
 from .models import SavedDashboardView
 from io import BytesIO
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -27,7 +28,7 @@ def has_role(user, role_name):
 
 def can_view_dashboard(user):
     """Check if user can view dashboard"""
-    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager', 'Viewer'])
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager', 'Project Coordinator', 'Viewer'])
 
 
 @login_required
@@ -44,7 +45,11 @@ def dashboard(request):
     funder = request.GET.get('funder')
     
     # Build queryset with filters
-    qs = Activity.objects.all()
+    qs = Activity.objects.filter(deleted=False)
+    
+    # Apply role-based filtering
+    role_category = get_user_role_category(request.user)
+    qs = apply_role_based_filters(qs, request.user)
     
     # Apply date filters to planned_month
     if start_date:
@@ -77,23 +82,27 @@ def dashboard(request):
     if funder:
         qs = qs.filter(funders__name=funder)
     
+    # First get distinct activities to avoid M2M duplication issues
+    distinct_activity_ids = qs.values_list('id', flat=True).distinct()
+    qs_distinct = Activity.objects.filter(id__in=distinct_activity_ids)
+
     # Aggregations
-    total_activities = qs.count()
-    by_year = list(qs.values('year').annotate(total=Count('id')).order_by('year'))
-    by_status = list(qs.values('status__name').annotate(total=Count('id')))
+    total_activities = qs_distinct.count()
+    by_year = list(qs_distinct.values('year').annotate(total=Count('id')).order_by('year'))
+    by_status = list(qs_distinct.values('status__name').annotate(total=Count('id')).filter(status__name__isnull=False))
     by_cluster = list(qs.values('clusters__short_name').annotate(
-        total=Count('id'),
+        total=Count('id', distinct=True),
         total_budget=Sum('total_budget'),
         total_disbursed=Sum('disbursed_amount')
-    ).order_by('clusters__short_name'))
+    ).filter(clusters__short_name__isnull=False).order_by('clusters__short_name'))
     by_funder = list(qs.values('funders__name').annotate(
-        total=Count('id'),
+        total=Count('id', distinct=True),
         total_budget=Sum('total_budget')
-    ).order_by('funders__name'))
-    by_quarter = list(qs.values('quarter').annotate(total=Count('id')).order_by('quarter'))
-    by_month = list(qs.values('planned_month__year', 'planned_month__month').annotate(
+    ).filter(funders__name__isnull=False).order_by('funders__name'))
+    by_quarter = list(qs_distinct.values('quarter').annotate(total=Count('id')).filter(quarter__isnull=False).order_by('quarter'))
+    by_month = list(qs_distinct.values('planned_month__year', 'planned_month__month').annotate(
         total_disbursed=Sum('disbursed_amount')
-    ).order_by('planned_month__year', 'planned_month__month'))
+    ).filter(planned_month__year__isnull=False).order_by('planned_month__year', 'planned_month__month'))
     
     # Procurement statistics
     procurement_full = qs.filter(is_procurement=True).count()
@@ -171,6 +180,10 @@ def dashboard(request):
     # Count clusters and funders
     total_clusters = qs.values('clusters').distinct().count()
     total_funders = qs.values('funders').distinct().count()
+
+    # Determine chart visibility based on user role and data
+    show_cluster_chart = total_clusters > 1 or role_category not in ['coordinator', 'manager']
+    show_funder_chart = total_funders > 1 or role_category not in ['coordinator']
 
     # PDF export of report
     if request.GET.get('export') == 'pdf':
@@ -343,6 +356,9 @@ def dashboard(request):
         'total_budget': total_budget,
         'total_disbursed': total_disbursed,
         'total_balance': total_balance,
+        'user_role': role_category,
+        'show_cluster_chart': show_cluster_chart,
+        'show_funder_chart': show_funder_chart,
         # Chart data for new visualizations
         'activities_by_cluster_data': json.dumps({
             'labels': cluster_labels,
@@ -396,6 +412,49 @@ def dashboard(request):
         'month_disbursed_json': json.dumps(month_disbursed),
     })
     return render(request, 'dashboards/overview.html', context)
+
+
+@login_required
+def my_space(request):
+    """Personal view of activities assigned to the current user."""
+    qs = Activity.objects.filter(deleted=False, responsible_officer=request.user)
+
+    today = date.today()
+    current_quarter = ((today.month - 1) // 3) + 1
+
+    aggregates = qs.aggregate(
+        total_budget=Sum('total_budget'),
+        total_disbursed=Sum('disbursed_amount')
+    )
+    total_budget = float(aggregates.get('total_budget') or 0)
+    total_disbursed = float(aggregates.get('total_disbursed') or 0)
+    total_remaining = total_budget - total_disbursed
+    coverage_pct = round((total_disbursed / total_budget * 100), 1) if total_budget > 0 else 0
+
+    due_month_qs = qs.filter(planned_month__year=today.year, planned_month__month=today.month)
+    due_quarter_qs = qs.filter(year=today.year, quarter=current_quarter)
+
+    def sum_money(qset, field):
+        return float(qset.aggregate(total=Sum(field)).get('total') or 0)
+
+    context = {
+        'today': today,
+        'current_quarter': current_quarter,
+        'total_assigned': qs.count(),
+        'total_budget': total_budget,
+        'total_disbursed': total_disbursed,
+        'total_remaining': total_remaining,
+        'coverage_pct': coverage_pct,
+        'due_month_count': due_month_qs.count(),
+        'due_month_budget': sum_money(due_month_qs, 'total_budget'),
+        'due_month_disbursed': sum_money(due_month_qs, 'disbursed_amount'),
+        'due_quarter_count': due_quarter_qs.count(),
+        'due_quarter_budget': sum_money(due_quarter_qs, 'total_budget'),
+        'due_quarter_disbursed': sum_money(due_quarter_qs, 'disbursed_amount'),
+        'recent_assigned': qs.order_by('planned_month')[:20],
+    }
+
+    return render(request, 'dashboards/my_space.html', context)
 
 
 def save_dashboard(request):
