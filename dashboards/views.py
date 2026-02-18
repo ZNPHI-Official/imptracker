@@ -8,7 +8,7 @@ from audit.models import AuditLog
 from .models import SavedDashboardView
 from io import BytesIO
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -412,6 +412,49 @@ def dashboard(request):
         'month_disbursed_json': json.dumps(month_disbursed),
     })
     return render(request, 'dashboards/overview.html', context)
+
+
+@login_required
+def my_space(request):
+    """Personal view of activities assigned to the current user."""
+    qs = Activity.objects.filter(deleted=False, responsible_officer=request.user)
+
+    today = date.today()
+    current_quarter = ((today.month - 1) // 3) + 1
+
+    aggregates = qs.aggregate(
+        total_budget=Sum('total_budget'),
+        total_disbursed=Sum('disbursed_amount')
+    )
+    total_budget = float(aggregates.get('total_budget') or 0)
+    total_disbursed = float(aggregates.get('total_disbursed') or 0)
+    total_remaining = total_budget - total_disbursed
+    coverage_pct = round((total_disbursed / total_budget * 100), 1) if total_budget > 0 else 0
+
+    due_month_qs = qs.filter(planned_month__year=today.year, planned_month__month=today.month)
+    due_quarter_qs = qs.filter(year=today.year, quarter=current_quarter)
+
+    def sum_money(qset, field):
+        return float(qset.aggregate(total=Sum(field)).get('total') or 0)
+
+    context = {
+        'today': today,
+        'current_quarter': current_quarter,
+        'total_assigned': qs.count(),
+        'total_budget': total_budget,
+        'total_disbursed': total_disbursed,
+        'total_remaining': total_remaining,
+        'coverage_pct': coverage_pct,
+        'due_month_count': due_month_qs.count(),
+        'due_month_budget': sum_money(due_month_qs, 'total_budget'),
+        'due_month_disbursed': sum_money(due_month_qs, 'disbursed_amount'),
+        'due_quarter_count': due_quarter_qs.count(),
+        'due_quarter_budget': sum_money(due_quarter_qs, 'total_budget'),
+        'due_quarter_disbursed': sum_money(due_quarter_qs, 'disbursed_amount'),
+        'recent_assigned': qs.order_by('planned_month')[:20],
+    }
+
+    return render(request, 'dashboards/my_space.html', context)
 
 
 def save_dashboard(request):

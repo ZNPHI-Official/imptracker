@@ -275,7 +275,7 @@ def activity_detail(request, pk):
     context = {
         'activity': a,
         'audit_logs': audit_logs,
-        'all_users': User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username'),
+        'all_users': User.objects.filter(is_active=True, clusters__in=a.clusters.all()).distinct().order_by('first_name', 'last_name', 'username'),
         'all_statuses': ActivityStatus.objects.all().order_by('name'),
         'users': User.objects.filter(is_active=True),
         'statuses': ActivityStatus.objects.all(),

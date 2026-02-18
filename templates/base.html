@@ -89,6 +89,12 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a class="nav-link fw-500 {% if request.resolver_match.url_name == 'my_space' %}active{% endif %}" href="{% url 'dashboards:my_space' %}">
+                <i class="bi bi-person-workspace me-1"></i><span class="d-lg-inline d-md-none">My Space</span>
+              </a>
+            </li>
+
             {% if request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
             <li class="nav-item">
               <a class="nav-link fw-500 {% if 'accounts:user_list' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'accounts:user_list' %}">

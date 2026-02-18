@@ -304,6 +304,42 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Format numbers with currency prefix K (Kwacha) and dynamic suffix (K, M, B)
+    function formatKwachaShort(val) {
+        var absVal = Math.abs(val);
+        var suffix = '';
+        var divisor = 1;
+
+        if (absVal >= 1000000000) {
+            suffix = 'B';
+            divisor = 1000000000;
+        } else if (absVal >= 1000000) {
+            suffix = 'M';
+            divisor = 1000000;
+        } else if (absVal >= 1000) {
+            suffix = 'K';
+            divisor = 1000;
+        }
+
+        var scaled = val / divisor;
+        var formatted;
+
+        if (Math.abs(scaled) >= 100) {
+            formatted = scaled.toFixed(0);
+        } else if (Math.abs(scaled) >= 10) {
+            formatted = scaled.toFixed(1);
+        } else {
+            formatted = scaled.toFixed(2);
+        }
+
+        return 'K' + formatted + suffix;
+    }
+
+    // Full-length Kwacha formatter for tooltips
+    function formatKwachaFull(val) {
+        var n = Number(val) || 0;
+        return 'K' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
     
     // 1. Activity Status Distribution - Donut Chart
     var statusOptions = {
@@ -429,7 +465,7 @@ document.addEventListener("DOMContentLoaded", function() {
         yaxis: {
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -453,7 +489,7 @@ document.addEventListener("DOMContentLoaded", function() {
             intersect: false,
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
@@ -536,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function() {
         yaxis: {
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -566,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function() {
             intersect: false,
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
@@ -595,7 +631,7 @@ document.addEventListener("DOMContentLoaded", function() {
             categories: funding_distribution_data.labels,
             labels: {
                 formatter: function (val) {
-                    return "K" + (val / 1000).toFixed(0) + "K";
+                    return formatKwachaShort(val);
                 }
             }
         },
@@ -613,7 +649,7 @@ document.addEventListener("DOMContentLoaded", function() {
             enabled: true,
             offsetX: 30,
             formatter: function (val) {
-                return "K" + (val / 1000).toFixed(0) + "K";
+                return formatKwachaShort(val);
             },
             style: {
                 fontSize: '12px',
@@ -623,7 +659,7 @@ document.addEventListener("DOMContentLoaded", function() {
         tooltip: {
             y: {
                 formatter: function (val) {
-                    return "K" + val.toLocaleString();
+                    return formatKwachaFull(val);
                 }
             }
         },
