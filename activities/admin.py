@@ -9,8 +9,8 @@ class ActivityAdmin(ImportExportModelAdmin):
         return ', '.join([c.short_name for c in obj.clusters.all()]) if obj.clusters.exists() else ''
     cluster_display.short_description = 'Cluster'
 
-    list_display = ('activity_id', 'name', 'year', 'cluster_display', 'status', 'total_budget', 'disbursed_amount', 'currency')
-    list_filter = ('year', 'clusters', 'status')
+    list_display = ('activity_id', 'name', 'year', 'cluster_display', 'status', 'total_budget', 'disbursed_amount', 'currency', 'retired', 'deleted')
+    list_filter = ('year', 'clusters', 'status', 'retired', 'deleted')
     search_fields = ('activity_id', 'name')
 
 

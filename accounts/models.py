@@ -9,6 +9,7 @@ class Cluster(models.Model):
 
 class User(AbstractUser):
     clusters=models.ManyToManyField(Cluster,blank=True)
+    coordinated_funder=models.ForeignKey('masters.Funder', null=True, blank=True, on_delete=models.SET_NULL, help_text="Funder that this Project Coordinator manages")
     
     def roles(self):
         """Return a list of role names (Django Groups) for the user."""

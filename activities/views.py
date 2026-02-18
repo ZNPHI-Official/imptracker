@@ -22,12 +22,12 @@ def has_role(user, role_name):
 
 def can_view_activities(user):
     """Check if user can view activities"""
-    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager', 'Viewer'])
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager', 'Project Coordinator', 'Viewer'])
 
 
 def can_edit_activities(user):
     """Check if user can edit activities"""
-    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager'])
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager', 'Project Coordinator'])
 
 
 def can_manage_activities(user):
@@ -40,19 +40,57 @@ def can_manage_users(user):
     return any(has_role(user, role) for role in ['System Admin', 'User Manager'])
 
 
+def get_user_role_category(user):
+    """Categorize user into role categories for access control"""
+    if user.is_superuser or has_role(user, 'System Admin'):
+        return 'admin'
+    elif has_role(user, 'Data Manager') or has_role(user, 'Viewer'):
+        return 'viewer'
+    elif has_role(user, 'Activity Manager'):
+        return 'manager'
+    elif has_role(user, 'Project Coordinator'):
+        return 'coordinator'
+    return 'none'
+
+
+def apply_role_based_filters(queryset, user):
+    """Apply role-based filtering to queryset based on user role"""
+    role_category = get_user_role_category(user)
+    
+    if role_category == 'coordinator':
+        # Project Coordinator: Only see their coordinated funder's activities
+        if user.coordinated_funder:
+            queryset = queryset.filter(funders__id=user.coordinated_funder.id)
+        else:
+            # No funder assigned, show no data
+            queryset = queryset.none()
+    elif role_category == 'manager':
+        # Activity Manager: Only see activities from their clusters
+        user_clusters = user.clusters.all()
+        if user_clusters.exists():
+            queryset = queryset.filter(clusters__in=user_clusters).distinct()
+        else:
+            # No clusters assigned, show no data
+            queryset = queryset.none()
+    # For 'admin' and 'viewer': Show all data (no filtering)
+    
+    return queryset
+
+
+
 @login_required
 def activities_list(request):
     if not can_view_activities(request.user):
         return HttpResponseForbidden("You do not have permission to view activities")
     
     qs = (
-        Activity.objects.filter(retired=False).select_related('status', 'currency', 'responsible_officer')
+        Activity.objects.filter(deleted=False).select_related('status', 'currency', 'responsible_officer')
         .prefetch_related('clusters', 'funders')
         .order_by('-year', 'activity_id')
     )
 
     # Get unique years from activities for dropdown, sorted descending
-    available_years = sorted(Activity.objects.filter(retired=False).values_list('year', flat=True).distinct(), reverse=True)
+    available_years = sorted(Activity.objects.filter(deleted=False).values_list('year', flat=True).distinct(), reverse=True)
     
     # Filters
     year = request.GET.get('year')
@@ -60,13 +98,14 @@ def activities_list(request):
     funder = request.GET.get('funder')
     status = request.GET.get('status')
     quarter = request.GET.get('quarter')
-    assigned_to = request.GET.get('assigned_to', 'all')
+    month = request.GET.get('month')
     q = request.GET.get('q')  # Search query
     procurement_status = request.GET.get('procurement_status', 'all')  # New filter
     recurring_filter = request.GET.get('recurring', 'all')  # New filter
+    show_all_years = request.GET.get('all_years') == '1'  # New parameter
 
-    # Set default year to current year (2026) if no year filter
-    if not year and 2026 in available_years:
+    # Set default year to current year (2026) if no year filter and not showing all years
+    if not year and not show_all_years and 2026 in available_years:
         year = '2026'
         qs = qs.filter(year=2026)
     elif year:
@@ -74,6 +113,15 @@ def activities_list(request):
             qs = qs.filter(year=int(year))
         except ValueError:
             pass
+    
+    # Apply role-based filtering
+    role_category = get_user_role_category(request.user)
+    qs = apply_role_based_filters(qs, request.user)
+    
+    # Determine which filters to show based on user role
+    user_clusters = request.user.clusters.all() if request.user else []
+    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
+    show_funder_filter = role_category not in ['coordinator', 'manager']
     
     needs_distinct = False
 
@@ -103,10 +151,11 @@ def activities_list(request):
         except ValueError:
             pass
 
-    if assigned_to == 'me':
-        qs = qs.filter(responsible_officer=request.user)
-    elif assigned_to == 'unassigned':
-        qs = qs.filter(responsible_officer__isnull=True)
+    if month:
+        try:
+            qs = qs.filter(planned_month__month=int(month))
+        except ValueError:
+            pass
 
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(activity_id__icontains=q))
@@ -148,6 +197,37 @@ def activities_list(request):
         else:
             qs = qs.order_by(sort_field)
 
+    # Build URLs for year toggle
+    current_params = request.GET.copy()
+    if show_all_years:
+        current_params.pop('all_years', None)
+        show_current_year_url = request.path + ('?' + current_params.urlencode() if current_params else '')
+        show_all_years_url = request.get_full_path()
+    else:
+        current_params['all_years'] = '1'
+        show_all_years_url = request.path + '?' + current_params.urlencode()
+        show_current_year_url = request.get_full_path()
+
+    # Determine available months based on selected quarter
+    if quarter and quarter.isdigit():
+        quarter_num = int(quarter)
+        if quarter_num == 1:
+            available_months = [1, 2, 3]
+        elif quarter_num == 2:
+            available_months = [4, 5, 6]
+        elif quarter_num == 3:
+            available_months = [7, 8, 9]
+        elif quarter_num == 4:
+            available_months = [10, 11, 12]
+        else:
+            available_months = list(range(1, 13))
+    else:
+        available_months = list(range(1, 13))
+
+    # Get filtered data for visibility logic
+    filtered_clusters = qs.values('clusters').distinct().count()
+    filtered_funders = qs.values('funders').distinct().count()
+
     context = {
         'activities': qs,
         'clusters': Cluster.objects.all(),
@@ -155,35 +235,42 @@ def activities_list(request):
         'statuses': ActivityStatus.objects.all(),
         'users': User.objects.filter(is_active=True),
         'years': available_years,
+        'available_months': available_months,
         'filters': {
             'year': year,
             'cluster': cluster,
             'funder': funder,
             'status': status,
             'quarter': quarter,
-            'assigned_to': assigned_to,
+            'month': month,
             'q': q,
             'procurement_status': procurement_status,
             'recurring': recurring_filter,
+            'all_years': show_all_years,
         },
         'sort': sort,
         'dir': direction,
         'can_create': can_manage_activities(request.user),
         'can_edit': can_edit_activities(request.user),
+        'show_all_years_url': request.get_full_path() + ('&' if request.GET else '?') + 'all_years=1',
+        'show_current_year_url': request.get_full_path().replace('&all_years=1', '').replace('?all_years=1', '').replace('all_years=1&', ''),
+        'user_role': role_category,
+        'show_cluster_filter': show_cluster_filter,
+        'show_funder_filter': show_funder_filter,
     }
     return render(request, 'activities/list.html', context)
 
 
 @login_required
 def activity_detail(request, pk):
-    a = get_object_or_404(Activity, pk=pk, retired=False)
+    a = get_object_or_404(Activity, pk=pk, deleted=False)
     audit_logs = AuditLog.objects.filter(
         activity_id=pk
     ).select_related('user').order_by('-timestamp')[:50]
     
     can_edit = can_edit_activities(request.user)
     can_delete = can_manage_activities(request.user)
-    available_years = sorted(Activity.objects.filter(retired=False).values_list('year', flat=True).distinct(), reverse=True)
+    available_years = sorted(Activity.objects.filter(deleted=False).values_list('year', flat=True).distinct(), reverse=True)
     
     context = {
         'activity': a,
@@ -204,7 +291,7 @@ def activity_detail(request, pk):
 
 @login_required
 def edit_activity(request, pk):
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     
     if not can_edit_activities(request.user):
         return HttpResponseForbidden("You do not have permission to edit activities")
@@ -405,15 +492,15 @@ def create_activity(request):
 
 @login_required
 def delete_activity(request, pk):
-    """Soft delete an activity - mark as retired (Data Manager, System Admin only)"""
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    """Soft delete an activity - mark as deleted (Data Manager, System Admin only)"""
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     
     if not can_manage_activities(request.user):
         messages.error(request, 'Permission denied')
         return redirect('activities_list')
     
     if request.method == 'POST':
-        activity.retired = True
+        activity.deleted = True
         activity.save()
         
         AuditLog.objects.create(
@@ -421,7 +508,7 @@ def delete_activity(request, pk):
             action='Activity deleted',
             object_repr=str(activity),
             activity_id=activity.id,
-            change_description='Activity marked as retired'
+            change_description='Activity marked as deleted'
         )
         
         messages.success(request, f'Activity "{activity.name}" has been deleted successfully.')
@@ -446,7 +533,7 @@ def bulk_action(request):
             if not activity_ids:
                 return JsonResponse({'error': 'No activities selected'}, status=400)
             
-            qs = Activity.objects.filter(id__in=activity_ids, retired=False)
+            qs = Activity.objects.filter(id__in=activity_ids, deleted=False)
             results = {'updated': 0, 'errors': []}
             
             if action == 'update_status':
@@ -471,7 +558,7 @@ def bulk_action(request):
                     return JsonResponse({'error': 'Status not found'}, status=400)
             
             elif action == 'delete':
-                updated = qs.update(retired=True)
+                updated = qs.update(deleted=True)
                 results['updated'] = updated
                 
                 for activity in qs:
@@ -480,7 +567,7 @@ def bulk_action(request):
                         action='Bulk delete',
                         object_repr=str(activity),
                         activity_id=activity.id,
-                        change_description='Activity marked as retired via bulk action'
+                        change_description='Activity marked as deleted via bulk action'
                     )
             
             elif action == 'assign_officer':
@@ -527,7 +614,7 @@ def upload_attachment(request, pk):
     if not can_edit_activities(request.user):
         return HttpResponseForbidden("You do not have permission to upload attachments")
     
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     
     if request.method == 'POST':
         form = ActivityAttachmentForm(request.POST, request.FILES)
@@ -605,7 +692,7 @@ def list_attachments(request, pk):
     if not can_view_activities(request.user):
         return HttpResponseForbidden("You do not have permission to view attachments")
     
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     
     # Get all non-deleted attachments grouped by document type
     attachments = ActivityAttachment.objects.filter(
@@ -677,7 +764,7 @@ def get_attachment_versions(request, pk):
     if not can_view_activities(request.user):
         return HttpResponseForbidden("You do not have permission to view attachments")
     
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     document_type = request.GET.get('type', '')
     
     if not document_type:
@@ -716,7 +803,7 @@ def update_activity_field(request, pk):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid request method'})
     
-    activity = get_object_or_404(Activity, pk=pk, retired=False)
+    activity = get_object_or_404(Activity, pk=pk, deleted=False)
     
     # Check permissions: must be data manager or responsible officer
     is_data_manager = has_role(request.user, 'Data Manager') or has_role(request.user, 'System Admin')
@@ -784,17 +871,25 @@ def procurement_list(request):
         return HttpResponseForbidden("You do not have permission to view activities")
     
     qs = (
-        Activity.objects.filter(Q(is_procurement=True) | Q(has_partial_procurement=True))
+        Activity.objects.filter(Q(is_procurement=True) | Q(has_partial_procurement=True), deleted=False)
         .select_related('status', 'currency', 'responsible_officer')
         .prefetch_related('clusters', 'funders')
         .order_by('-year', 'activity_id')
     )
 
+    # Apply role-based filtering
+    role_category = get_user_role_category(request.user)
+    qs = apply_role_based_filters(qs, request.user)
+    
+    # Determine which filters to show based on user role
+    user_clusters = request.user.clusters.all() if request.user else []
+    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
+    show_funder_filter = role_category not in ['coordinator', 'manager']
+
     status = request.GET.get('status')
     funder = request.GET.get('funder')
     cluster = request.GET.get('cluster')
     quarter = request.GET.get('quarter')
-    assigned_to = request.GET.get('assigned_to', 'all')
     procurement_type = request.GET.get('procurement_type', 'all')  # all | full | partial
 
     needs_distinct = False
@@ -825,11 +920,6 @@ def procurement_list(request):
         except ValueError:
             pass
 
-    if assigned_to == 'me':
-        qs = qs.filter(responsible_officer=request.user)
-    elif assigned_to == 'unassigned':
-        qs = qs.filter(responsible_officer__isnull=True)
-
     if procurement_type == 'full':
         qs = qs.filter(is_procurement=True)
     elif procurement_type == 'partial':
@@ -848,9 +938,11 @@ def procurement_list(request):
             'funder': funder,
             'cluster': cluster,
             'quarter': quarter,
-            'assigned_to': assigned_to,
             'procurement_type': procurement_type,
         },
+        'user_role': role_category,
+        'show_cluster_filter': show_cluster_filter,
+        'show_funder_filter': show_funder_filter,
     }
     return render(request, 'activities/procurement_list.html', context)
 
@@ -863,7 +955,7 @@ def procurement_detail(request, pk):
     
     activity = get_object_or_404(
         Activity.objects.select_related('status', 'currency', 'responsible_officer').prefetch_related('clusters', 'funders'),
-        pk=pk
+        pk=pk, deleted=False
     )
     
     # Calculate totals from breakdown
@@ -896,7 +988,7 @@ def export_procurement_excel(request):
     
     # Filter activities with procurement
     activities = Activity.objects.filter(
-        Q(is_procurement=True) | Q(has_partial_procurement=True)
+        Q(is_procurement=True) | Q(has_partial_procurement=True), deleted=False
     ).select_related('status', 'currency', 'responsible_officer').prefetch_related('clusters', 'funders').order_by('-year', 'activity_id')
     
     # Create workbook

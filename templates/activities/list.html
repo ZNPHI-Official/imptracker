@@ -23,6 +23,7 @@
             <a href="{% url 'procurement_list' %}" class="btn btn-warning">
                 <i class="bi bi-shop me-1"></i>Procurements
             </a>
+            
             {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"Activity Manager" or request.user|has_role:"System Admin" or request.user|has_role:"Data Manager" %}
             <a href="{% url 'upload_activities' %}" class="btn btn-info">
                 <i class="bi bi-upload me-1"></i>Bulk Upload
@@ -39,6 +40,7 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-2 align-items-end">
+            {% if user_role != 'coordinator' %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Status</label>
                 <select name="status" class="form-select">
@@ -48,6 +50,9 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
+
+            {% if show_funder_filter %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Funder</label>
                 <select name="funder" class="form-select">
@@ -57,6 +62,9 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
+
+            {% if show_cluster_filter %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Cluster</label>
                 <select name="cluster" class="form-select">
@@ -66,6 +74,9 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
+
+            {% if user_role != 'coordinator' %}
             <div class="col-6 col-md-1">
                 <label class="form-label mb-1">Quarter</label>
                 <select name="quarter" class="form-select">
@@ -77,15 +88,29 @@
                 </select>
             </div>
             <div class="col-6 col-md-2">
-                <label class="form-label mb-1">Assignee</label>
-                <select name="assigned_to" class="form-select">
-                    <option value="all" {% if filters.assigned_to == "all" or not filters.assigned_to %}selected{% endif %}>All</option>
-                    <option value="me" {% if filters.assigned_to == "me" %}selected{% endif %}>Assigned to me</option>
-                    <option value="unassigned" {% if filters.assigned_to == "unassigned" %}selected{% endif %}>Unassigned</option>
+                <label class="form-label mb-1">Month</label>
+                <select name="month" class="form-select">
+                    <option value="">All</option>
+                    {% for month_num in available_months %}
+                        <option value="{{ month_num }}" {% if filters.month == month_num|stringformat:"s" %}selected{% endif %}>
+                            {% load humanize %}
+                            {{ month_num|date:"M" }}
+                        </option>
+                    {% endfor %}
                 </select>
             </div>
+            {% endif %}
 
             <div class="col-12 d-flex gap-2 mt-2">
+                {% if filters.all_years %}
+                <a href="{{ show_current_year_url }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-calendar-check me-1"></i>Show Current Year
+                </a>
+            {% else %}
+                <a href="{{ show_all_years_url }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-calendar-range me-1"></i>Show All Years
+                </a>
+            {% endif %}
                 <button type="submit" class="btn btn-success">
                     <i class="bi bi-funnel me-1"></i>Apply Filters
                 </button>
@@ -116,7 +141,7 @@
                         <th>Status</th>
                         <th>Planned Month</th>
                         <th>Quarter</th>
-                        <th>Responsible Officer</th>
+                        <th>Funder</th>
                         <th>Budget</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -149,7 +174,7 @@
                                 <span class="text-muted">—</span>
                             {% endif %}
                         </td>
-                        <td>
+                        {% comment %} <td>
                             {% if activity.responsible_officer %}
                                 {% if activity.responsible_officer.get_full_name %}
                                     {{ activity.responsible_officer.get_full_name }}
@@ -159,6 +184,13 @@
                             {% else %}
                                 <span class="text-muted">Not assigned</span>
                             {% endif %}
+                        </td> {% endcomment %}
+                        <td>
+                            {% for funder in activity.funders.all %}
+                                <span class="badge bg-info me-1">{{ funder.name }}</span>
+                            {% empty %}
+                                <span class="text-muted">—</span>
+                            {% endfor %}
                         </td>
                         <td class="fw-medium">
                             {{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma|default:"0" }}
@@ -237,6 +269,48 @@ document.addEventListener('DOMContentLoaded', function() {
             zeroRecords: "No matching activities found"
         }
     });
+
+    // Dynamic month filtering based on quarter selection
+    const quarterSelect = document.querySelector('select[name="quarter"]');
+    const monthSelect = document.querySelector('select[name="month"]');
+
+    function updateMonthOptions() {
+        const selectedQuarter = quarterSelect.value;
+        const currentMonthValue = monthSelect.value;
+
+        // Clear current options except "All"
+        monthSelect.innerHTML = '<option value="">All</option>';
+
+        // Define months for each quarter
+        const quarterMonths = {
+            '1': [1, 2, 3],    // Q1: Jan, Feb, Mar
+            '2': [4, 5, 6],    // Q2: Apr, May, Jun
+            '3': [7, 8, 9],    // Q3: Jul, Aug, Sep
+            '4': [10, 11, 12], // Q4: Oct, Nov, Dec
+        };
+
+        // Get months to show (all months if no quarter selected)
+        const monthsToShow = selectedQuarter && quarterMonths[selectedQuarter] ? quarterMonths[selectedQuarter] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+        // Add month options
+        monthsToShow.forEach(monthNum => {
+            const monthName = new Date(2024, monthNum - 1, 1).toLocaleString('default', { month: 'short' });
+            const option = document.createElement('option');
+            option.value = monthNum;
+            option.textContent = monthName;
+            if (currentMonthValue === monthNum.toString()) {
+                option.selected = true;
+            }
+            monthSelect.appendChild(option);
+        });
+    }
+
+    // Update months when quarter changes
+    if (quarterSelect && monthSelect) {
+        quarterSelect.addEventListener('change', updateMonthOptions);
+        // Initial update
+        updateMonthOptions();
+    }
 });
 </script>
 {% endblock %}
