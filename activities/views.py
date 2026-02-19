@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from .models import Activity, ActivityAttachment
 from .forms import ActivityForm, BulkActionForm, ActivityAttachmentForm
 from accounts.models import Cluster, User
@@ -32,7 +32,7 @@ def can_edit_activities(user):
 
 def can_manage_activities(user):
     """Check if user can create, delete, and bulk manage activities"""
-    return any(has_role(user, role) for role in ['System Admin', 'Data Manager'])
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Activity Manager'])
 
 
 def can_manage_users(user):
@@ -179,6 +179,13 @@ def activities_list(request):
     elif recurring_filter == 'non_recurring':
         qs = qs.filter(is_recurring=False, generated_from_recurrence=False)
 
+    # Calculate summary statistics for filtered activities
+    total_activities = qs.count()
+    total_budget = qs.aggregate(Sum('total_budget'))['total_budget__sum'] or 0
+    total_disbursed = qs.aggregate(Sum('disbursed_amount'))['disbursed_amount__sum'] or 0
+    total_procurement_value = qs.aggregate(Sum('procurement_amount'))['procurement_amount__sum'] or 0
+    procurement_activities_count = qs.filter(Q(is_procurement=True) | Q(has_partial_procurement=True)).count()
+
     # Sorting
     sort = request.GET.get('sort')
     direction = request.GET.get('dir', 'asc')
@@ -257,6 +264,11 @@ def activities_list(request):
         'user_role': role_category,
         'show_cluster_filter': show_cluster_filter,
         'show_funder_filter': show_funder_filter,
+        'total_activities': total_activities,
+        'total_budget': total_budget,
+        'total_disbursed': total_disbursed,
+        'total_procurement_value': total_procurement_value,
+        'procurement_activities_count': procurement_activities_count,
     }
     return render(request, 'activities/list.html', context)
 

@@ -29,9 +29,11 @@
                 <i class="bi bi-upload me-1"></i>Bulk Upload
             </a>
             {% endif %}
+            {% if can_create %}
             <a href="{% url 'create_activity' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-2"></i>New Activity
             </a>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -119,6 +121,54 @@
                 </a>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-primary mb-1">
+                    <i class="bi bi-list-task fs-5"></i>
+                </div>
+                <div class="fw-bold text-primary">{{ total_activities }}</div>
+                <small class="text-muted">Activities</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-success mb-1">
+                    <i class="bi bi-cash-coin fs-5"></i>
+                </div>
+                <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
+                <small class="text-muted">Total Budget</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-warning mb-1">
+                    <i class="bi bi-check-circle fs-5"></i>
+                </div>
+                <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
+                <small class="text-muted">Disbursed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-info h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-info mb-1">
+                    <i class="bi bi-cart fs-5"></i>
+                </div>
+                <div class="fw-bold text-info">K{{ total_procurement_value|intcomma }}</div>
+                <small class="text-muted">{{ procurement_activities_count }} procurements</small>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -226,9 +276,11 @@
                     Get started by creating your first activity or upload multiple activities at once.
                 </p>
                 <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    {% if can_create %}
                     <a href="{% url 'create_activity' %}" class="btn btn-primary btn-lg">
                         <i class="bi bi-plus-circle me-2"></i>Create Activity
                     </a>
+                    {% endif %}
                     {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"Activity Manager" or request.user|has_role:"System Admin" or request.user|has_role:"Data Manager" %}
                     <a href="{% url 'upload_activities' %}" class="btn btn-success btn-lg">
                         <i class="bi bi-cloud-upload me-2"></i>Bulk Upload
