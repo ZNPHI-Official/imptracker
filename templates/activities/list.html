@@ -38,6 +38,54 @@
     </div>
 </div>
 
+<!-- Summary Stats -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-primary mb-1">
+                    <i class="bi bi-list-task fs-5"></i>
+                </div>
+                <div class="fw-bold text-primary">{{ total_activities }}</div>
+                <small class="text-muted">Activities</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-success mb-1">
+                    <i class="bi bi-cash-coin fs-5"></i>
+                </div>
+                <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
+                <small class="text-muted">Total Budget</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-warning mb-1">
+                    <i class="bi bi-check-circle fs-5"></i>
+                </div>
+                <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
+                <small class="text-muted">Disbursed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-info h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-info mb-1">
+                    <i class="bi bi-cart fs-5"></i>
+                </div>
+                <div class="fw-bold text-info">K{{ total_procurement_value|intcomma }}</div>
+                <small class="text-muted">{{ procurement_activities_count }} procurements</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Filters -->
 <div class="card mb-3">
     <div class="card-body">
@@ -124,53 +172,6 @@
     </div>
 </div>
 
-<!-- Summary Stats -->
-<div class="row g-2 mb-3">
-    <div class="col-6 col-md-3">
-        <div class="card border-primary h-100">
-            <div class="card-body p-2 text-center">
-                <div class="text-primary mb-1">
-                    <i class="bi bi-list-task fs-5"></i>
-                </div>
-                <div class="fw-bold text-primary">{{ total_activities }}</div>
-                <small class="text-muted">Activities</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-success h-100">
-            <div class="card-body p-2 text-center">
-                <div class="text-success mb-1">
-                    <i class="bi bi-cash-coin fs-5"></i>
-                </div>
-                <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
-                <small class="text-muted">Total Budget</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-warning h-100">
-            <div class="card-body p-2 text-center">
-                <div class="text-warning mb-1">
-                    <i class="bi bi-check-circle fs-5"></i>
-                </div>
-                <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
-                <small class="text-muted">Disbursed</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-info h-100">
-            <div class="card-body p-2 text-center">
-                <div class="text-info mb-1">
-                    <i class="bi bi-cart fs-5"></i>
-                </div>
-                <div class="fw-bold text-info">K{{ total_procurement_value|intcomma }}</div>
-                <small class="text-muted">{{ procurement_activities_count }} procurements</small>
-            </div>
-        </div>
-    </div>
-</div>
 
 {% if activities %}
 <!-- Activities Table Card -->
