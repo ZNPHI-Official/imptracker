@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transport Request {{ request.request_id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-file-alt mr-2"></i>
+                            Transport Request {{ request.request_id }}
+                        </h3>
+                        <span class="badge badge-{{ request.status|lower }} badge-lg">
+                            {{ request.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Request Details -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Request Details</h5>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">Request ID</dt>
+                                        <dd class="col-sm-8">{{ request.request_id }}</dd>
+
+                                        <dt class="col-sm-4">Activity</dt>
+                                        <dd class="col-sm-8">
+                                            {{ request.activity_name }}
+                                            {% if request.linked_activity %}
+                                            <br><small class="text-muted">Linked to: {{ request.linked_activity.name }}</small>
+                                            {% endif %}
+                                        </dd>
+
+                                        <dt class="col-sm-4">Journey Type</dt>
+                                        <dd class="col-sm-8">{{ request.get_journey_type_display }}</dd>
+
+                                        <dt class="col-sm-4">Description</dt>
+                                        <dd class="col-sm-8">{{ request.description|default:"Not provided"|linebreaks }}</dd>
+
+                                        <dt class="col-sm-4">Pickup Location</dt>
+                                        <dd class="col-sm-8">{{ request.pickup_location }}</dd>
+
+                                        <dt class="col-sm-4">Destination</dt>
+                                        <dd class="col-sm-8">{{ request.destination }}</dd>
+
+                                        <dt class="col-sm-4">Departure</dt>
+                                        <dd class="col-sm-8">{{ request.departure_datetime|date:"M d, Y \a\t H:i" }}</dd>
+
+                                        <dt class="col-sm-4">Return</dt>
+                                        <dd class="col-sm-8">{{ request.return_datetime|date:"M d, Y \a\t H:i" }}</dd>
+
+                                        <dt class="col-sm-4">Passengers</dt>
+                                        <dd class="col-sm-8">{{ request.num_passengers }}</dd>
+
+                                        <dt class="col-sm-4">Justification</dt>
+                                        <dd class="col-sm-8">{{ request.justification|linebreaks }}</dd>
+
+                                        {% if request.special_requirements %}
+                                        <dt class="col-sm-4">Special Requirements</dt>
+                                        <dd class="col-sm-8">{{ request.special_requirements|linebreaks }}</dd>
+                                        {% endif %}
+
+                                        <dt class="col-sm-4">Requested By</dt>
+                                        <dd class="col-sm-8">{{ request.requested_by.get_full_name }}</dd>
+
+                                        <dt class="col-sm-4">Created</dt>
+                                        <dd class="col-sm-8">{{ request.created_at|date:"M d, Y \a\t H:i" }}</dd>
+
+                                        {% if request.approved_by %}
+                                        <dt class="col-sm-4">Approved By</dt>
+                                        <dd class="col-sm-8">{{ request.approved_by.get_full_name }}</dd>
+                                        {% endif %}
+
+                                        {% if request.rejection_reason %}
+                                        <dt class="col-sm-4">Rejection Reason</dt>
+                                        <dd class="col-sm-8 text-danger">{{ request.rejection_reason|linebreaks }}</dd>
+                                        {% endif %}
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions Sidebar -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if request.status == 'draft' and request.requested_by == user %}
+                                    <a href="{% url 'fleet:request_edit' request.pk %}" class="btn btn-warning btn-block mb-2">
+                                        <i class="fas fa-edit"></i> Edit Request
+                                    </a>
+                                    <a href="{% url 'fleet:request_submit' request.pk %}" class="btn btn-success btn-block mb-2">
+                                        <i class="fas fa-paper-plane"></i> Submit for Approval
+                                    </a>
+                                    {% endif %}
+
+                                    {% if can_approve %}
+                                    <a href="{% url 'fleet:request_approve' request.pk %}" class="btn btn-primary btn-block mb-2">
+                                        <i class="fas fa-check"></i> Review Request
+                                    </a>
+                                    {% endif %}
+
+                                    {% if can_allocate %}
+                                    <a href="{% url 'fleet:allocate_trip' request.pk %}" class="btn btn-info btn-block mb-2">
+                                        <i class="fas fa-car"></i> Allocate Vehicle & Driver
+                                    </a>
+                                    {% endif %}
+
+                                    <a href="{% url 'fleet:request_list' %}" class="btn btn-secondary btn-block">
+                                        <i class="fas fa-arrow-left"></i> Back to Requests
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Allocation Details -->
+                            {% if allocation %}
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Trip Allocation</h5>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="row small">
+                                        <dt class="col-sm-5">Vehicle</dt>
+                                        <dd class="col-sm-7">{{ allocation.vehicle.registration_number }}</dd>
+
+                                        <dt class="col-sm-5">Driver</dt>
+                                        <dd class="col-sm-7">{{ allocation.driver.user.get_full_name }}</dd>
+
+                                        <dt class="col-sm-5">Status</dt>
+                                        <dd class="col-sm-7">
+                                            <span class="badge badge-{{ allocation.status|lower }}">
+                                                {{ allocation.get_status_display }}
+                                            </span>
+                                        </dd>
+
+                                        {% if allocation.confirmed_at %}
+                                        <dt class="col-sm-5">Confirmed</dt>
+                                        <dd class="col-sm-7">{{ allocation.confirmed_at|date:"M d, Y H:i" }}</dd>
+                                        {% endif %}
+                                    </dl>
+
+                                    {% if allocation.status == 'allocated' and allocation.driver.user == user %}
+                                    <a href="{% url 'fleet:confirm_allocation' allocation.pk %}" class="btn btn-success btn-sm btn-block mt-2">
+                                        <i class="fas fa-check"></i> Confirm Trip
+                                    </a>
+                                    {% endif %}
+
+                                    {% if allocation.status == 'confirmed' and allocation.driver.user == user %}
+                                    <a href="{% url 'fleet:start_trip' allocation.pk %}" class="btn btn-primary btn-sm btn-block mt-2">
+                                        <i class="fas fa-play"></i> Start Trip
+                                    </a>
+                                    {% endif %}
+
+                                    {% if allocation.status == 'in_progress' and allocation.driver.user == user %}
+                                    <a href="{% url 'fleet:complete_trip' allocation.pk %}" class="btn btn-success btn-sm btn-block mt-2">
+                                        <i class="fas fa-check"></i> Complete Trip
+                                    </a>
+                                    {% endif %}
+
+                                    {% if allocation.status == 'allocated' or allocation.status == 'confirmed' or allocation.status == 'in_progress' %}
+                                    {% if user.has_perm('fleet.add_tripallocation') %}
+                                    <a href="{% url 'fleet:cancel_trip' allocation.pk %}" class="btn btn-danger btn-sm btn-block mt-2">
+                                        <i class="fas fa-times"></i> Cancel Trip
+                                    </a>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.badge-draft { background-color: #6c757d; }
+.badge-pending_approval { background-color: #ffc107; color: #212529; }
+.badge-approved { background-color: #28a745; }
+.badge-rejected { background-color: #dc3545; }
+.badge-allocated { background-color: #17a2b8; }
+.badge-in_progress { background-color: #007bff; }
+.badge-completed { background-color: #28a745; }
+.badge-cancelled { background-color: #6c757d; }
+.badge-confirmed { background-color: #28a745; }
+
+.badge-lg {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+}
+
+dl.row dt {
+    font-weight: 600;
+    color: #495057;
+}
+
+dl.row dd {
+    color: #6c757d;
+}
+</style>
+{% endblock %}

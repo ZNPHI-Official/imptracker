@@ -370,6 +370,15 @@ class NotificationLog(models.Model):
         ('due_date_alert', 'Due Date Alert'),
         ('update', 'Activity Update'),
         ('comment', 'New Comment'),
+        # Fleet Management Notifications
+        ('transport_request_submitted', 'Transport Request Submitted'),
+        ('transport_request_approved', 'Transport Request Approved'),
+        ('transport_request_rejected', 'Transport Request Rejected'),
+        ('trip_allocated', 'Trip Allocated'),
+        ('trip_confirmed', 'Trip Confirmed'),
+        ('trip_started', 'Trip Started'),
+        ('trip_completed', 'Trip Completed'),
+        ('trip_cancelled', 'Trip Cancelled'),
     ]
     
     STATUS_CHOICES = [
@@ -379,7 +388,10 @@ class NotificationLog(models.Model):
         ('retrying', 'Retrying'),
     ]
     
-    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='notifications')
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
+    # Fleet Management Objects
+    transport_request = models.ForeignKey('fleet.TransportRequest', on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
+    trip_allocation = models.ForeignKey('fleet.TripAllocation', on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='received_notifications')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_notifications')
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPE_CHOICES, default='update')
@@ -402,12 +414,25 @@ class NotificationLog(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['activity', 'recipient']),
+            models.Index(fields=['transport_request', 'recipient']),
+            models.Index(fields=['trip_allocation', 'recipient']),
             models.Index(fields=['status', 'created_at']),
             models.Index(fields=['notification_type']),
         ]
     
     def __str__(self):
-        return f"{self.notification_type} - {self.recipient.email if self.recipient else self.email_address}"
+        obj_name = self.get_related_object_name()
+        return f"{self.notification_type} - {self.recipient.email if self.recipient else self.email_address} - {obj_name}"
+    
+    def get_related_object_name(self):
+        """Get the name of the related object (activity, transport request, etc.)"""
+        if self.activity:
+            return f"Activity: {self.activity.name}"
+        elif self.transport_request:
+            return f"Transport Request: {self.transport_request.request_id}"
+        elif self.trip_allocation:
+            return f"Trip Allocation: {self.trip_allocation.id}"
+        return "System"
     
     def mark_as_sent(self):
         """Mark notification as sent"""

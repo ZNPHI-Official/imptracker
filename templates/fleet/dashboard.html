@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load account_tags %}
+
+{% block title %}Fleet Management Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-truck mr-2"></i>
+                        Fleet Management Dashboard
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Quick Stats -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="info-box bg-light">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Pending Requests</span>
+                                    <span class="info-box-number">{{ pending_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box bg-warning">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Approved Requests</span>
+                                    <span class="info-box-number">{{ approved_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box bg-success">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Allocated Trips</span>
+                                    <span class="info-box-number">{{ allocated_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% if available_vehicles %}
+                        <div class="col-md-3">
+                            <div class="info-box bg-info">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Available Vehicles</span>
+                                    <span class="info-box-number">{{ available_vehicles }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Quick Actions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <a href="{% url 'fleet:request_create' %}" class="btn btn-primary mr-2">
+                                        <i class="fas fa-plus"></i> New Transport Request
+                                    </a>
+                                    <a href="{% url 'fleet:request_list' %}" class="btn btn-secondary mr-2">
+                                        <i class="fas fa-list"></i> View All Requests
+                                    </a>
+                                    {% if user|has_perm:'fleet.approve_request' %}
+                                    <a href="{% url 'fleet:request_list' %}?status=pending_approval" class="btn btn-warning">
+                                        <i class="fas fa-check"></i> Review Pending Requests
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Requests -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Recent Transport Requests</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if recent_requests %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Request ID</th>
+                                                    <th>Activity</th>
+                                                    <th>Status</th>
+                                                    <th>Requested By</th>
+                                                    <th>Departure</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for request in recent_requests %}
+                                                <tr>
+                                                    <td>{{ request.request_id }}</td>
+                                                    <td>{{ request.activity_name }}</td>
+                                                    <td>
+                                                        <span class="badge badge-{{ request.status|lower }}">
+                                                            {{ request.get_status_display }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ request.requested_by.get_full_name }}</td>
+                                                    <td>{{ request.departure_datetime|date:"M d, Y H:i" }}</td>
+                                                    <td>
+                                                        <a href="{% url 'fleet:request_detail' request.pk %}" class="btn btn-sm btn-info">
+                                                            View
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">No transport requests found.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.info-box {
+    box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+    border-radius: .25rem;
+    margin-bottom: 1rem;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    padding: .5rem;
+}
+
+.info-box-content {
+    padding: .5rem;
+    margin-left: .5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.info-box-text {
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: .6875rem;
+    color: #6c757d;
+}
+
+.info-box-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #343a40;
+}
+
+.badge-draft { background-color: #6c757d; }
+.badge-pending_approval { background-color: #ffc107; color: #212529; }
+.badge-approved { background-color: #28a745; }
+.badge-rejected { background-color: #dc3545; }
+.badge-allocated { background-color: #17a2b8; }
+.badge-in_progress { background-color: #007bff; }
+.badge-completed { background-color: #28a745; }
+.badge-cancelled { background-color: #6c757d; }
+</style>
+{% endblock %}

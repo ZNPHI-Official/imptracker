@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Allocate Vehicle & Driver{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-car mr-2"></i>
+                        Allocate Vehicle & Driver
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info">{{ request.request_id }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Request Summary -->
+                    <div class="alert alert-info">
+                        <h5>{{ request.activity_name }}</h5>
+                        <p class="mb-1"><strong>Departure:</strong> {{ request.departure_datetime|date:"M d, Y \a\t H:i" }}</p>
+                        <p class="mb-1"><strong>Return:</strong> {{ request.return_datetime|date:"M d, Y \a\t H:i" }}</p>
+                        <p class="mb-0"><strong>Passengers:</strong> {{ request.num_passengers }}</p>
+                    </div>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Advanced Filters -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-filter"></i> Advanced Filters
+                                    <small class="text-muted">(optional)</small>
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            {{ form.vehicle_type.label_tag }}
+                                            {{ form.vehicle_type }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            {{ form.fuel_type.label_tag }}
+                                            {{ form.fuel_type }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            {{ form.min_capacity.label_tag }}
+                                            {{ form.min_capacity }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            {{ form.preferred_location.label_tag }}
+                                            {{ form.preferred_location }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <button type="submit" name="apply_filters" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-search"></i> Apply Filters
+                                    </button>
+                                    <small class="text-muted ml-2">Click to filter available vehicles and drivers</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Vehicle Selection -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.vehicle.label_tag }}
+                                    {{ form.vehicle }}
+                                    {% if form.vehicle.errors %}
+                                    <div class="text-danger small mt-1">{{ form.vehicle.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Driver Selection -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    {{ form.driver.label_tag }}
+                                    {{ form.driver }}
+                                    {% if form.driver.errors %}
+                                    <div class="text-danger small mt-1">{{ form.driver.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Allocation Notes -->
+                        <div class="form-group">
+                            {{ form.allocation_notes.label_tag }}
+                            {{ form.allocation_notes }}
+                            {% if form.allocation_notes.errors %}
+                            <div class="text-danger small mt-1">{{ form.allocation_notes.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Allocate & Notify
+                            </button>
+                            <a href="{% url 'fleet:request_detail' request.pk %}" class="btn btn-secondary ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh available options when vehicle changes
+    const vehicleSelect = document.getElementById('id_vehicle');
+    const driverSelect = document.getElementById('id_driver');
+
+    if (vehicleSelect && driverSelect) {
+        vehicleSelect.addEventListener('change', function() {
+            const vehicleId = this.value;
+            if (vehicleId) {
+                // Could add AJAX call here to filter drivers based on vehicle
+                console.log('Vehicle selected:', vehicleId);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -28,3 +28,14 @@ def has_group(user, group_names):
     
     # Check if user belongs to any of the specified groups
     return user.groups.filter(name__in=groups).exists()
+
+
+@register.filter
+def has_perm(user, perm):
+    """
+    Template filter to check if a user has a specific permission.
+    Usage: {% if request.user|has_perm:"app.permission" %}
+    """
+    if not user.is_authenticated:
+        return False
+    return user.has_perm(perm)

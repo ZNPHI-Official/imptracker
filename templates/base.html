@@ -95,6 +95,14 @@
               </a>
             </li>
 
+            {% if request.user|has_perm:"fleet.view_own_requests" or request.user|has_perm:"fleet.view_all_requests" %}
+            <li class="nav-item">
+              <a class="nav-link fw-500 {% if 'fleet' in request.resolver_match.app_name %}active{% endif %}" href="{% url 'fleet:dashboard' %}">
+                <i class="bi bi-car-front me-1"></i><span class="d-lg-inline d-md-none">Fleet</span>
+              </a>
+            </li>
+            {% endif %}
+
             {% if request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
             <li class="nav-item">
               <a class="nav-link fw-500 {% if 'accounts:user_list' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'accounts:user_list' %}">

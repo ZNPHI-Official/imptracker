@@ -1,0 +1,68 @@
+{% extends 'emails/base.html' %}
+
+{% block subject %}Transport Request Submitted: {{ transport_request.request_id }}{% endblock %}
+
+{% block content %}
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+        Transport Request Submitted
+    </h2>
+
+    <p>Dear {{ recipient.get_full_name|default:recipient.username }},</p>
+
+    <p>A new transport request has been submitted and requires your approval:</p>
+
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #495057;">Request Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold; width: 120px;">Request ID:</td>
+                <td style="padding: 5px 0;">{{ transport_request.request_id }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Activity:</td>
+                <td style="padding: 5px 0;">{{ transport_request.activity_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Requested By:</td>
+                <td style="padding: 5px 0;">{{ transport_request.requested_by.get_full_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Departure:</td>
+                <td style="padding: 5px 0;">{{ transport_request.departure_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Return:</td>
+                <td style="padding: 5px 0;">{{ transport_request.return_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Passengers:</td>
+                <td style="padding: 5px 0;">{{ transport_request.num_passengers }}</td>
+            </tr>
+            {% if transport_request.journey_type == 'linked' %}
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Journey Type:</td>
+                <td style="padding: 5px 0;">Linked to Activity</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Journey Type:</td>
+                <td style="padding: 5px 0;">Ad-hoc Request</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <p>Please review and approve or reject this request:</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ approve_url }}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-right: 10px; display: inline-block;">Review Request</a>
+        <a href="{{ request_url }}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View Details</a>
+    </div>
+
+    <p>If you have any questions, please contact the requester directly.</p>
+
+    <p>Best regards,<br>
+    ImpTracker Fleet Management System</p>
+</div>
+{% endblock %}

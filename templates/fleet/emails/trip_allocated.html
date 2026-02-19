@@ -1,0 +1,71 @@
+{% extends 'emails/base.html' %}
+
+{% block subject %}Trip Allocated: {{ transport_request.request_id }}{% endblock %}
+
+{% block content %}
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 10px;">
+        🚗 Trip Allocated
+    </h2>
+
+    <p>Dear {{ recipient.get_full_name|default:recipient.username }},</p>
+
+    <p>You have been allocated a trip! Here are the details:</p>
+
+    <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #0c5460;">Trip Details</h3>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold; width: 140px;">Request ID:</td>
+                <td style="padding: 5px 0;">{{ transport_request.request_id }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Activity:</td>
+                <td style="padding: 5px 0;">{{ transport_request.activity_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Vehicle:</td>
+                <td style="padding: 5px 0;">{{ trip_allocation.vehicle.registration_number }} ({{ trip_allocation.vehicle.model }})</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Passengers:</td>
+                <td style="padding: 5px 0;">{{ transport_request.num_passengers }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Departure:</td>
+                <td style="padding: 5px 0;">{{ transport_request.departure_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Return:</td>
+                <td style="padding: 5px 0;">{{ transport_request.return_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            {% if trip_allocation.allocation_notes %}
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Notes:</td>
+                <td style="padding: 5px 0;">{{ trip_allocation.allocation_notes }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <p><strong>Action Required:</strong></p>
+    <p>Please confirm this trip allocation to proceed. You can also contact the requester for any specific pickup/drop-off details.</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ allocation_url }}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Confirm Trip</a>
+    </div>
+
+    <p><strong>Contact Information:</strong></p>
+    <ul>
+        <li><strong>Requester:</strong> {{ transport_request.requested_by.get_full_name }} ({{ transport_request.requested_by.email }})</li>
+        <li><strong>Allocated by:</strong> {{ allocated_by.get_full_name|default:allocated_by.username }}</li>
+    </ul>
+
+    <p>If you have any questions or cannot take this trip, please contact the transport office immediately.</p>
+
+    <p>Safe travels!</p>
+    <p>Best regards,<br>
+    ImpTracker Fleet Management System</p>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Complete Trip{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-check mr-2"></i>
+                        Complete Trip
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Trip Summary -->
+                    <div class="alert alert-info">
+                        <h5>{{ allocation.transport_request.request_id }}</h5>
+                        <p class="mb-1"><strong>Vehicle:</strong> {{ allocation.vehicle.registration_number }} ({{ allocation.vehicle.model }})</p>
+                        <p class="mb-1"><strong>From:</strong> {{ allocation.transport_request.pickup_location }}</p>
+                        <p class="mb-1"><strong>To:</strong> {{ allocation.transport_request.destination }}</p>
+                        <p class="mb-0"><strong>Started:</strong> {{ allocation.actual_departure_datetime|date:"M d, Y \a\t H:i" }}</p>
+                    </div>
+
+                    <p>Provide completion odometer details to finalize this trip.</p>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            {{ form.end_mileage.label_tag }}
+                            {{ form.end_mileage }}
+                            {% if form.end_mileage.help_text %}
+                            <small class="form-text text-muted">{{ form.end_mileage.help_text }}</small>
+                            {% endif %}
+                            {% if form.end_mileage.errors %}
+                            <div class="text-danger small mt-1">{{ form.end_mileage.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.incident_notes.label_tag }}
+                            {{ form.incident_notes }}
+                            {% if form.incident_notes.errors %}
+                            <div class="text-danger small mt-1">{{ form.incident_notes.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            {{ form.actual_distance_km.label_tag }}
+                            {{ form.actual_distance_km }}
+                            {% if form.actual_distance_km.help_text %}
+                            <small class="form-text text-muted">{{ form.actual_distance_km.help_text }}</small>
+                            {% endif %}
+                            {% if form.actual_distance_km.errors %}
+                            <div class="text-danger small mt-1">{{ form.actual_distance_km.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors.0 }}</div>
+                        {% endif %}
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Complete Trip
+                            </button>
+                            <a href="{% url 'fleet:request_detail' allocation.transport_request.pk %}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'emails/base.html' %}
+
+{% block subject %}Transport Request Rejected: {{ transport_request.request_id }}{% endblock %}
+
+{% block content %}
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 10px;">
+        ❌ Transport Request Rejected
+    </h2>
+
+    <p>Dear {{ recipient.get_full_name|default:recipient.username }},</p>
+
+    <p>We regret to inform you that your transport request has been rejected:</p>
+
+    <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #721c24;">Request Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold; width: 120px;">Request ID:</td>
+                <td style="padding: 5px 0;">{{ transport_request.request_id }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Activity:</td>
+                <td style="padding: 5px 0;">{{ transport_request.activity_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Rejected By:</td>
+                <td style="padding: 5px 0;">{{ rejected_by.get_full_name|default:rejected_by.username }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Departure:</td>
+                <td style="padding: 5px 0;">{{ transport_request.departure_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Return:</td>
+                <td style="padding: 5px 0;">{{ transport_request.return_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+        </table>
+
+        {% if rejection_reason %}
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f5c6cb;">
+            <strong>Reason for Rejection:</strong><br>
+            {{ rejection_reason }}
+        </div>
+        {% endif %}
+    </div>
+
+    <p><strong>What you can do next:</strong></p>
+    <ul>
+        <li>Review the rejection reason and modify your request if needed</li>
+        <li>Contact the transport office for clarification</li>
+        <li>Submit a new request with the necessary adjustments</li>
+    </ul>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ request_url }}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View Request Details</a>
+    </div>
+
+    <p>If you need assistance or have questions about this rejection, please contact the transport office.</p>
+
+    <p>Best regards,<br>
+    ImpTracker Fleet Management System</p>
+</div>
+{% endblock %}

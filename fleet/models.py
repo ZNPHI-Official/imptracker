@@ -51,6 +51,12 @@ class TransportRequestStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class JourneyType(models.TextChoices):
+    """Journey type choices for transport requests."""
+    LINKED = "linked", "Linked to Activity"
+    AD_HOC = "ad_hoc", "Ad-hoc Request"
+
+
 class TripAllocationStatus(models.TextChoices):
     """Trip allocation execution status."""
     ALLOCATED = "allocated", "Allocated"
@@ -433,6 +439,8 @@ class TransportRequest(FleetAuditMixin):
             models.Index(fields=["requested_by"]),
             models.Index(fields=["departure_datetime"]),
             models.Index(fields=["status", "departure_datetime"]),
+            models.Index(fields=["return_datetime"]),
+            models.Index(fields=["departure_datetime", "return_datetime"]),
         ]
     
     def __str__(self):
@@ -563,8 +571,27 @@ class TripAllocation(FleetAuditMixin):
         help_text="When driver confirmed this allocation"
     )
     
+    # Actual trip execution times
+    actual_departure_datetime = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual time when trip started"
+    )
+    actual_return_datetime = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Actual time when trip completed"
+    )
+    actual_distance_km = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Actual distance traveled in km"
+    )
+    
     # Allocation notes
-    notes = models.TextField(blank=True)
+    allocation_notes = models.TextField(blank=True)
     
     class Meta:
         ordering = ["-created_at"]
@@ -573,6 +600,8 @@ class TripAllocation(FleetAuditMixin):
             models.Index(fields=["driver", "status"]),
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),
+            # Performance indexes for allocation queries
+            models.Index(fields=["transport_request", "status"]),
         ]
     
     def __str__(self):

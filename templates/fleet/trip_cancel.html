@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cancel Trip{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel Trip
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Trip Summary -->
+                    <div class="alert alert-warning">
+                        <h5>{{ allocation.transport_request.request_id }}</h5>
+                        <p class="mb-1"><strong>Vehicle:</strong> {{ allocation.vehicle.registration_number }} ({{ allocation.vehicle.model }})</p>
+                        <p class="mb-1"><strong>Driver:</strong> {{ allocation.driver.user.get_full_name }}</p>
+                        <p class="mb-1"><strong>Destination:</strong> {{ allocation.transport_request.destination }}</p>
+                        <p class="mb-0"><strong>Scheduled:</strong> {{ allocation.transport_request.departure_datetime|date:"M d, Y \a\t H:i" }}</p>
+                    </div>
+
+                    <p>Please provide a reason for cancelling this trip. This action cannot be undone.</p>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            {{ form.cancellation_reason.label_tag }}
+                            {{ form.cancellation_reason }}
+                            {% if form.cancellation_reason.errors %}
+                            <div class="text-danger small mt-1">{{ form.cancellation_reason.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-times"></i> Cancel Trip
+                            </button>
+                            <a href="{% url 'fleet:request_detail' allocation.transport_request.pk %}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Go Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

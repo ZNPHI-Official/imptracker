@@ -315,3 +315,39 @@ def user_has_fleet_permission(user, permission):
     if not user.is_authenticated:
         return False
     return user.has_perm(permission)
+
+
+# ============================================================================
+# DECORATORS
+# ============================================================================
+
+def driver_only_required(view_func):
+    """
+    Decorator to restrict access to drivers only.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.path}")
+        
+        if not user_is_driver(request.user):
+            raise PermissionDenied("Only Drivers can access this resource.")
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def transport_officer_only_required(view_func):
+    """
+    Decorator to restrict access to transport officers only.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.path}")
+        
+        if not user_is_transport_officer(request.user):
+            raise PermissionDenied("Only Transport Officers can access this resource.")
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper

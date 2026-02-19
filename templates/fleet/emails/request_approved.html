@@ -1,0 +1,61 @@
+{% extends 'emails/base.html' %}
+
+{% block subject %}Transport Request Approved: {{ transport_request.request_id }}{% endblock %}
+
+{% block content %}
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px;">
+        ✅ Transport Request Approved
+    </h2>
+
+    <p>Dear {{ recipient.get_full_name|default:recipient.username }},</p>
+
+    <p>Great news! Your transport request has been approved:</p>
+
+    <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #155724;">Approved Request Details</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold; width: 120px;">Request ID:</td>
+                <td style="padding: 5px 0;">{{ transport_request.request_id }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Activity:</td>
+                <td style="padding: 5px 0;">{{ transport_request.activity_name }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Approved By:</td>
+                <td style="padding: 5px 0;">{{ approved_by.get_full_name|default:approved_by.username }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Departure:</td>
+                <td style="padding: 5px 0;">{{ transport_request.departure_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Return:</td>
+                <td style="padding: 5px 0;">{{ transport_request.return_datetime|date:"M d, Y \a\t H:i" }}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px 0; font-weight: bold;">Passengers:</td>
+                <td style="padding: 5px 0;">{{ transport_request.num_passengers }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <p><strong>Next Steps:</strong></p>
+    <ul>
+        <li>Your request will now be allocated to an available vehicle and driver</li>
+        <li>You will receive a notification once the allocation is complete</li>
+        <li>The driver will contact you with pickup details</li>
+    </ul>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ request_url }}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">View Request Details</a>
+    </div>
+
+    <p>If you have any questions about your approved request, please contact the transport office.</p>
+
+    <p>Best regards,<br>
+    ImpTracker Fleet Management System</p>
+</div>
+{% endblock %}
