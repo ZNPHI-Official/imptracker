@@ -97,7 +97,7 @@ def activities_list(request):
     cluster = request.GET.get('cluster')
     funder = request.GET.get('funder')
     status = request.GET.get('status')
-    quarter = request.GET.get('quarter')
+    quarter = request.GET.getlist('quarter')
     month = request.GET.get('month')
     q = request.GET.get('q')  # Search query
     procurement_status = request.GET.get('procurement_status', 'all')  # New filter
@@ -146,10 +146,15 @@ def activities_list(request):
             qs = qs.filter(status__name=status)
 
     if quarter:
-        try:
-            qs = qs.filter(quarter=int(quarter))
-        except ValueError:
-            pass
+        # Filter by multiple quarters if provided
+        valid_quarters = []
+        for q in quarter:
+            try:
+                valid_quarters.append(int(q))
+            except ValueError:
+                pass
+        if valid_quarters:
+            qs = qs.filter(quarter__in=valid_quarters)
 
     if month:
         try:
@@ -216,17 +221,20 @@ def activities_list(request):
         show_current_year_url = request.get_full_path()
 
     # Determine available months based on selected quarter
-    if quarter and quarter.isdigit():
-        quarter_num = int(quarter)
-        if quarter_num == 1:
-            available_months = [1, 2, 3]
-        elif quarter_num == 2:
-            available_months = [4, 5, 6]
-        elif quarter_num == 3:
-            available_months = [7, 8, 9]
-        elif quarter_num == 4:
-            available_months = [10, 11, 12]
-        else:
+    if quarter and len(quarter) == 1:
+        try:
+            quarter_num = int(quarter[0])
+            if quarter_num == 1:
+                available_months = [1, 2, 3]
+            elif quarter_num == 2:
+                available_months = [4, 5, 6]
+            elif quarter_num == 3:
+                available_months = [7, 8, 9]
+            elif quarter_num == 4:
+                available_months = [10, 11, 12]
+            else:
+                available_months = list(range(1, 13))
+        except (ValueError, IndexError):
             available_months = list(range(1, 13))
     else:
         available_months = list(range(1, 13))
