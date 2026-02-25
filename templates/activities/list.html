@@ -3,7 +3,7 @@
 {% load humanize %}
 {% load account_tags %}
 
-{% block title %}Activities List{% endblock %}
+{% block title %}Activities{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item active" aria-current="page">Activities</li>
@@ -24,7 +24,7 @@
                 <i class="bi bi-shop me-1"></i>Procurements
             </a>
             
-            {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"Activity Manager" or request.user|has_role:"System Admin" or request.user|has_role:"Data Manager" %}
+            {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"System Admin" or request.user|has_role:"Data Manager" %}
             <a href="{% url 'upload_activities' %}" class="btn btn-info">
                 <i class="bi bi-upload me-1"></i>Bulk Upload
             </a>
@@ -42,53 +42,45 @@
 <div class="row g-2 mb-3">
     <div class="col-6 col-md-3">
         <div class="card border-primary h-100">
-            <div class="card-body p-2 d-flex align-items-center">
-                <div class="text-primary me-2">
+            <div class="card-body p-2 text-center">
+                <div class="text-primary mb-1">
                     <i class="bi bi-list-task fs-5"></i>
                 </div>
-                <div class="flex-grow-1 text-end">
-                    <div class="fw-bold text-primary">{{ total_activities }}</div>
-                    <small class="text-muted">Activities</small>
-                </div>
+                <div class="fw-bold text-primary">{{ total_activities }}</div>
+                <small class="text-muted">Activities</small>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-success h-100">
-            <div class="card-body p-2 d-flex align-items-center">
-                <div class="text-success me-2">
+            <div class="card-body p-2 text-center">
+                <div class="text-success mb-1">
                     <i class="bi bi-cash-coin fs-5"></i>
                 </div>
-                <div class="flex-grow-1 text-end">
-                    <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
-                    <small class="text-muted">Total Budget</small>
-                </div>
+                <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
+                <small class="text-muted">Total Budget</small>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-warning h-100">
-            <div class="card-body p-2 d-flex align-items-center">
-                <div class="text-warning me-2">
+            <div class="card-body p-2 text-center">
+                <div class="text-warning mb-1">
                     <i class="bi bi-check-circle fs-5"></i>
                 </div>
-                <div class="flex-grow-1 text-end">
-                    <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
-                    <small class="text-muted">Disbursed</small>
-                </div>
+                <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
+                <small class="text-muted">Disbursed</small>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card border-info h-100">
-            <div class="card-body p-2 d-flex align-items-center">
-                <div class="text-info me-2">
+            <div class="card-body p-2 text-center">
+                <div class="text-info mb-1">
                     <i class="bi bi-cart fs-5"></i>
                 </div>
-                <div class="flex-grow-1 text-end">
-                    <div class="fw-bold text-info">K{{ total_procurement_value|intcomma }}</div>
-                    <small class="text-muted">{{ procurement_activities_count }} procurements</small>
-                </div>
+                <div class="fw-bold text-info">K{{ total_procurement_value|intcomma }}</div>
+                <small class="text-muted">{{ procurement_activities_count }} procurements</small>
             </div>
         </div>
     </div>
@@ -98,7 +90,6 @@
 <div class="card mb-3">
     <div class="card-body">
         <form method="get" class="row g-2 align-items-end">
-            {% if user_role != 'coordinator' %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Status</label>
                 <select name="status" class="form-select">
@@ -108,7 +99,6 @@
                     {% endfor %}
                 </select>
             </div>
-            {% endif %}
 
             {% if show_funder_filter %}
             <div class="col-12 col-md-3">
@@ -134,14 +124,14 @@
             </div>
             {% endif %}
 
-            {% if user_role != 'coordinator' %}
-            <div class="col-6 col-md-2">
+            <div class="col-6 col-md-1">
                 <label class="form-label mb-1">Quarter</label>
-                <select name="quarter" class="form-select select-quarter" multiple style="width: 100%;">
-                    <option value="1" {% if "1" in filters.quarter %}selected{% endif %}>Q1</option>
-                    <option value="2" {% if "2" in filters.quarter %}selected{% endif %}>Q2</option>
-                    <option value="3" {% if "3" in filters.quarter %}selected{% endif %}>Q3</option>
-                    <option value="4" {% if "4" in filters.quarter %}selected{% endif %}>Q4</option>
+                <select name="quarter" class="form-select">
+                    <option value="">All</option>
+                    <option value="1" {% if filters.quarter == "1" %}selected{% endif %}>Q1</option>
+                    <option value="2" {% if filters.quarter == "2" %}selected{% endif %}>Q2</option>
+                    <option value="3" {% if filters.quarter == "3" %}selected{% endif %}>Q3</option>
+                    <option value="4" {% if filters.quarter == "4" %}selected{% endif %}>Q4</option>
                 </select>
             </div>
             <div class="col-6 col-md-2">
@@ -156,7 +146,6 @@
                     {% endfor %}
                 </select>
             </div>
-            {% endif %}
 
             <div class="col-12 d-flex gap-2 mt-2">
                 {% if filters.all_years %}
@@ -258,9 +247,11 @@
                                 <a href="{% url 'activity_detail' activity.pk %}" class="btn btn-outline-info" title="View Details">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                {% if can_edit and not request.user|has_role:"Viewer" %}
                                 <a href="{% url 'edit_activity' activity.pk %}" class="btn btn-outline-primary" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -308,51 +299,9 @@
 {% endif %}
 {% endblock %}
 
-{% block page_css %}
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<style>
-/* Keep the quarter multi-select compact so it does not bloat the layout */
-.select2-container--bootstrap-5 .select2-selection--multiple {
-    min-height: 38px;
-    max-height: 72px;
-    overflow-y: auto;
-    padding: 0.25rem 0.35rem;
-    border-radius: 0.35rem;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-    padding: 2px 6px;
-    font-size: 0.8rem;
-    line-height: 1.2;
-    margin-top: 2px;
-    border-radius: 0.25rem;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
-    margin-right: 4px;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-search__field {
-    padding: 2px 4px;
-}
-</style>
-{% endblock %}
-
 {% block page_js %}
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2 for quarter filter
-    $('.select-quarter').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select quarters...',
-        allowClear: false,
-        width: '100%'
-    });
     new DataTable('#data-table', {
         responsive: true,
         pageLength: 25,
@@ -377,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthSelect = document.querySelector('select[name="month"]');
 
     function updateMonthOptions() {
-        const selectedQuarters = Array.from(quarterSelect.selectedOptions).map(option => option.value);
+        const selectedQuarter = quarterSelect.value;
         const currentMonthValue = monthSelect.value;
 
         // Clear current options except "All"
@@ -391,15 +340,8 @@ document.addEventListener('DOMContentLoaded', function() {
             '4': [10, 11, 12], // Q4: Oct, Nov, Dec
         };
 
-        // Get months to show based on selected quarters
-        let monthsToShow = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // Default to all months
-        
-        if (selectedQuarters.length === 1) {
-            // If only one quarter selected, show only months from that quarter
-            const selectedQuarter = selectedQuarters[0];
-            monthsToShow = quarterMonths[selectedQuarter] || monthsToShow;
-        }
-        // If multiple quarters or none selected, show all months
+        // Get months to show (all months if no quarter selected)
+        const monthsToShow = selectedQuarter && quarterMonths[selectedQuarter] ? quarterMonths[selectedQuarter] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
         // Add month options
         monthsToShow.forEach(monthNum => {
@@ -416,8 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update months when quarter changes
     if (quarterSelect && monthSelect) {
-        // For Select2, use 'change.select2' event
-        $(quarterSelect).on('change.select2', updateMonthOptions);
+        quarterSelect.addEventListener('change', updateMonthOptions);
         // Initial update
         updateMonthOptions();
     }

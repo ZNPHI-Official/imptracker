@@ -40,6 +40,15 @@ def can_manage_users(user):
     return any(has_role(user, role) for role in ['System Admin', 'User Manager'])
 
 
+def can_use_cluster_filter(user):
+    """Check if user should see the cluster filter"""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Project Coordinator', 'Viewer'])
+
+
 def get_user_role_category(user):
     """Categorize user into role categories for access control"""
     if user.is_superuser or has_role(user, 'System Admin'):
@@ -56,15 +65,8 @@ def get_user_role_category(user):
 def apply_role_based_filters(queryset, user):
     """Apply role-based filtering to queryset based on user role"""
     role_category = get_user_role_category(user)
-    
-    if role_category == 'coordinator':
-        # Project Coordinator: Only see their coordinated funder's activities
-        if user.coordinated_funder:
-            queryset = queryset.filter(funders__id=user.coordinated_funder.id)
-        else:
-            # No funder assigned, show no data
-            queryset = queryset.none()
-    elif role_category == 'manager':
+
+    if role_category == 'manager':
         # Activity Manager: Only see activities from their clusters
         user_clusters = user.clusters.all()
         if user_clusters.exists():
@@ -72,7 +74,7 @@ def apply_role_based_filters(queryset, user):
         else:
             # No clusters assigned, show no data
             queryset = queryset.none()
-    # For 'admin' and 'viewer': Show all data (no filtering)
+    # For 'admin', 'viewer', and 'coordinator': Show all data (no filtering)
     
     return queryset
 
@@ -119,9 +121,8 @@ def activities_list(request):
     qs = apply_role_based_filters(qs, request.user)
     
     # Determine which filters to show based on user role
-    user_clusters = request.user.clusters.all() if request.user else []
-    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
-    show_funder_filter = role_category not in ['coordinator', 'manager']
+    show_cluster_filter = can_use_cluster_filter(request.user)
+    show_funder_filter = True
     
     needs_distinct = False
 
@@ -902,9 +903,8 @@ def procurement_list(request):
     qs = apply_role_based_filters(qs, request.user)
     
     # Determine which filters to show based on user role
-    user_clusters = request.user.clusters.all() if request.user else []
-    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
-    show_funder_filter = role_category not in ['coordinator', 'manager']
+    show_cluster_filter = can_use_cluster_filter(request.user)
+    show_funder_filter = True
 
     status = request.GET.get('status')
     funder = request.GET.get('funder')
