@@ -11,14 +11,14 @@ class ActivityForm(forms.ModelForm):
     clusters = forms.ModelMultipleChoiceField(
         queryset=Cluster.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        required=False,
+        required=True,
         label="Clusters"
     )
     
     funders = forms.ModelMultipleChoiceField(
         queryset=Funder.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        required=False,
+        required=True,
         label="Funders"
     )
     
@@ -84,6 +84,14 @@ class ActivityForm(forms.ModelForm):
 
     def clean(self):
         super().clean()
+
+        clusters = self.cleaned_data.get('clusters')
+        funders = self.cleaned_data.get('funders')
+        if not clusters:
+            self.add_error('clusters', 'Please select at least one cluster.')
+        if not funders:
+            self.add_error('funders', 'Please select at least one funder.')
+
         # Validate budget amounts
         total_budget = self.cleaned_data.get('total_budget')
         disbursed_amount = self.cleaned_data.get('disbursed_amount')

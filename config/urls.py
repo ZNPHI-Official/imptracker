@@ -56,4 +56,5 @@ urlpatterns = [
 	# Include app URLs
 	path('accounts/', include('accounts.urls')),
 	path('masters/', include('masters.urls')),
+	path('support/', include('support.urls')),
 ]

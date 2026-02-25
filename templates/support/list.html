@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Support{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">Support</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h1 class="page-title">
+                <i class="bi bi-life-preserver me-2"></i>Support
+            </h1>
+            <p class="page-subtitle text-muted mb-0">Report issues and track their status</p>
+        </div>
+        <button id="toggleIssueFormBtn" class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#createIssueCollapse" aria-expanded="false" aria-controls="createIssueCollapse">
+            <i class="bi bi-plus-circle me-1"></i><span class="toggle-label">Create Issue</span>
+        </button>
+    </div>
+</div>
+
+<div class="collapse mb-4 {% if create_form.errors %}show{% endif %}" id="createIssueCollapse">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Report an Issue</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-4">
+                    <label class="form-label">Issue Type</label>
+                    {{ create_form.issue_type }}
+                    {% if create_form.issue_type.errors %}
+                        <div class="text-danger small mt-1">{{ create_form.issue_type.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Details</label>
+                    {{ create_form.details }}
+                    {% if create_form.details.errors %}
+                        <div class="text-danger small mt-1">{{ create_form.details.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send me-1"></i>Submit Issue
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-list-check me-2"></i>Reported Issues</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="issuesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Details</th>
+                        <th>Reported By</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        {% if can_update_status or can_delete_issue %}<th class="text-end">Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in issues %}
+                    <tr>
+                        <td>#{{ issue.id }}</td>
+                        <td>{{ issue.get_issue_type_display }}</td>
+                        <td style="min-width: 280px;">{{ issue.details }}</td>
+                        <td>{{ issue.reported_by.get_full_name|default:issue.reported_by.username }}</td>
+                        <td>{{ issue.created_at|naturaltime }}</td>
+                        <td>
+                            {% if issue.status == 'pending_review' %}
+                                <span class="badge bg-secondary">Pending review</span>
+                            {% elif issue.status == 'in_progress' %}
+                                <span class="badge bg-primary">In progress</span>
+                            {% elif issue.status == 'under_review' %}
+                                <span class="badge bg-warning text-dark">Under review</span>
+                            {% elif issue.status == 'resolved' %}
+                                <span class="badge bg-success">Resolved</span>
+                            {% endif %}
+                        </td>
+                        {% if can_update_status or can_delete_issue %}
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                {% if can_update_status %}
+                                <form method="post" action="{% url 'support:update_status' issue.pk %}" class="d-flex justify-content-end gap-2">
+                                    {% csrf_token %}
+                                    <select name="status" class="form-select form-select-sm" style="max-width: 180px;">
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if issue.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                </form>
+                                {% endif %}
+
+                                {% if can_delete_issue %}
+                                <form method="post" action="{% url 'support:delete_issue' issue.pk %}" onsubmit="return confirm('Delete issue #{{ issue.id }}? This action cannot be undone.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if can_update_status or can_delete_issue %}7{% else %}6{% endif %}" class="text-center text-muted py-4">
+                            No issues reported yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    new DataTable('#issuesTable', {
+        pageLength: 25,
+        order: [[0, 'desc']],
+        columnDefs: [{ orderable: false, targets: {% if can_update_status or can_delete_issue %}[6]{% else %}[]{% endif %} }],
+        language: {
+            searchPlaceholder: 'Search issues...'
+        }
+    });
+
+    const collapseEl = document.getElementById('createIssueCollapse');
+    const toggleBtn = document.getElementById('toggleIssueFormBtn');
+    if (collapseEl && toggleBtn) {
+        const labelEl = toggleBtn.querySelector('.toggle-label');
+        const iconEl = toggleBtn.querySelector('i');
+
+        function setToggleState(isOpen) {
+            if (labelEl) {
+                labelEl.textContent = isOpen ? 'Hide Form' : 'Create Issue';
+            }
+            if (iconEl) {
+                iconEl.className = isOpen ? 'bi bi-dash-circle me-1' : 'bi bi-plus-circle me-1';
+            }
+            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        setToggleState(collapseEl.classList.contains('show'));
+
+        collapseEl.addEventListener('shown.bs.collapse', function() {
+            setToggleState(true);
+        });
+
+        collapseEl.addEventListener('hidden.bs.collapse', function() {
+            setToggleState(false);
+        });
+    }
+});
+</script>
+{% endblock %}

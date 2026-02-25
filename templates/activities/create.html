@@ -73,14 +73,18 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Clusters</label>
+                            <label class="form-label">
+                                Clusters <span class="text-danger">*</span>
+                            </label>
                             {{ form.clusters }}
                             {% if form.clusters.errors %}
                                 <div class="invalid-feedback d-block">{{ form.clusters.errors.0 }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Funders</label>
+                            <label class="form-label">
+                                Funders <span class="text-danger">*</span>
+                            </label>
                             {{ form.funders }}
                             {% if form.funders.errors %}
                                 <div class="invalid-feedback d-block">{{ form.funders.errors.0 }}</div>
