@@ -6,7 +6,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
-from datetime import datetime
+from datetime import datetime, date
 from activities.models import Activity, ActivityAttachment
 from masters.models import Funder, ActivityStatus, Currency
 from accounts.models import Cluster
@@ -336,6 +336,99 @@ class ActivityAttachmentIntegrationTestCase(TestCase):
         )
         
         self.assertEqual(len(active), 1)
+
+
+class ActivityListAndDashboardConsistencyTestCase(TestCase):
+    """Regression tests for list/dashboard/procurement consistency."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = Client()
+        cls.user = User.objects.create_user(
+            username='datamanager',
+            email='dm@example.com',
+            password='testpass123'
+        )
+        data_manager_group, _ = Group.objects.get_or_create(name='Data Manager')
+        cls.user.groups.add(data_manager_group)
+
+        cls.currency = Currency.objects.create(code='ZMW', name='Zambian Kwacha')
+        cls.status = ActivityStatus.objects.create(name='Planned')
+        cls.funder = Funder.objects.create(name='Consistency Funder', code='CF')
+        cls.cluster = Cluster.objects.create(short_name='CC', full_name='Consistency Cluster')
+
+        current_year = date.today().year
+
+        # Included in default-year totals (current year, not deleted)
+        cls.current_year_active = Activity.objects.create(
+            activity_id='CONS001',
+            name='Current Year Active',
+            year=current_year,
+            status=cls.status,
+            currency=cls.currency,
+            responsible_officer=cls.user,
+            planned_month=datetime(current_year, 1, 15),
+            total_budget=1000,
+            procurement_amount=1000
+        )
+
+        # Should be excluded everywhere due to soft-delete
+        cls.current_year_deleted = Activity.objects.create(
+            activity_id='CONS002',
+            name='Current Year Deleted',
+            year=current_year,
+            status=cls.status,
+            currency=cls.currency,
+            responsible_officer=cls.user,
+            planned_month=datetime(current_year, 2, 15),
+            total_budget=2000,
+            procurement_amount=2000,
+            deleted=True
+        )
+
+        # Should be excluded from default (no-filter) totals due to non-current year
+        cls.previous_year_active = Activity.objects.create(
+            activity_id='CONS003',
+            name='Previous Year Active',
+            year=current_year - 1,
+            status=cls.status,
+            currency=cls.currency,
+            responsible_officer=cls.user,
+            planned_month=datetime(current_year - 1, 3, 15),
+            total_budget=3000,
+            procurement_amount=500
+        )
+
+        for activity in [cls.current_year_active, cls.current_year_deleted, cls.previous_year_active]:
+            activity.funders.add(cls.funder)
+            activity.clusters.add(cls.cluster)
+
+    def setUp(self):
+        self.client = Client()
+        self.client.login(username='datamanager', password='testpass123')
+
+    def test_default_dashboard_and_activities_totals_match_and_exclude_deleted(self):
+        activities_response = self.client.get('/activities/')
+        dashboard_response = self.client.get('/dashboard/')
+
+        self.assertEqual(activities_response.status_code, 200)
+        self.assertEqual(dashboard_response.status_code, 200)
+
+        activities_total = activities_response.context['total_activities']
+        dashboard_total = dashboard_response.context['total_activities']
+
+        self.assertEqual(activities_total, dashboard_total)
+        self.assertEqual(activities_total, 1)
+
+    def test_procurement_list_excludes_deleted_activities(self):
+        procurement_response = self.client.get('/activities/procurement/')
+
+        self.assertEqual(procurement_response.status_code, 200)
+        procurement_ids = set(procurement_response.context['activities'].values_list('activity_id', flat=True))
+
+        self.assertIn('CONS001', procurement_ids)
+        self.assertIn('CONS003', procurement_ids)
+        self.assertNotIn('CONS002', procurement_ids)
 
 
 if __name__ == '__main__':

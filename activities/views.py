@@ -11,7 +11,7 @@ from accounts.models import Cluster, User
 from masters.models import Funder, ActivityStatus, Currency, ProcurementType
 from audit.models import AuditLog
 import json
-from datetime import datetime
+from datetime import datetime, date
 
 
 # Permission helper functions
@@ -106,10 +106,11 @@ def activities_list(request):
     recurring_filter = request.GET.get('recurring', 'all')  # New filter
     show_all_years = request.GET.get('all_years') == '1'  # New parameter
 
-    # Set default year to current year (2026) if no year filter and not showing all years
-    if not year and not show_all_years and 2026 in available_years:
-        year = '2026'
-        qs = qs.filter(year=2026)
+    # Set default year to current year if no year filter and not showing all years
+    current_year = date.today().year
+    if not year and not show_all_years and current_year in available_years:
+        year = str(current_year)
+        qs = qs.filter(year=current_year)
     elif year:
         try:
             qs = qs.filter(year=int(year))
@@ -119,6 +120,7 @@ def activities_list(request):
     # Apply role-based filtering
     role_category = get_user_role_category(request.user)
     qs = apply_role_based_filters(qs, request.user)
+    qs = qs.filter(deleted=False)
     
     # Determine which filters to show based on user role
     show_cluster_filter = can_use_cluster_filter(request.user)

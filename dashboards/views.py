@@ -47,6 +47,13 @@ def dashboard(request):
     
     # Build queryset with filters
     qs = Activity.objects.filter(deleted=False)
+
+    # Match activities list default behavior: current year when no year/date filters are provided
+    if not year and not start_date and not end_date:
+        current_year = date.today().year
+        available_years = Activity.objects.filter(deleted=False).values_list('year', flat=True).distinct()
+        if current_year in available_years:
+            year = str(current_year)
     
     # Apply role-based filtering
     role_category = get_user_role_category(request.user)
