@@ -7,6 +7,13 @@ from datetime import date
 
 class ActivityForm(forms.ModelForm):
     """Form for creating and editing activities with role-based field restrictions"""
+
+    category = forms.MultipleChoiceField(
+        choices=Activity.CATEGORY_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Category"
+    )
     
     clusters = forms.ModelMultipleChoiceField(
         queryset=Cluster.objects.all(),
@@ -25,7 +32,7 @@ class ActivityForm(forms.ModelForm):
     class Meta:
         model = Activity
         fields = [
-            'name', 'clusters', 'funders', 'status', 
+            'name', 'category', 'clusters', 'funders', 'status', 
             'planned_month', 'total_budget', 'disbursed_amount', 
             'currency', 'responsible_officer', 'notes',
             # Recurrence fields
@@ -54,6 +61,7 @@ class ActivityForm(forms.ModelForm):
         }
         labels = {
             'name': 'Activity Name',
+            'category': 'Category',
             'status': 'Implementation Status',
             'planned_month': 'Planned Month',
             'total_budget': 'Total Budget',
@@ -74,41 +82,64 @@ class ActivityForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['category'].initial = self.instance.category if self.instance and self.instance.pk else []
         # Filter to only show active procurement types
         self.fields['procurement_type'].queryset = ProcurementType.objects.filter(active=True)
+        self.fields['responsible_officer'].queryset = User.objects.filter(is_active=True).distinct().order_by('first_name', 'last_name', 'username')
         # Set default procurement type if one is marked as default
         if not self.instance.pk:  # Only for new activities
             default_type = ProcurementType.objects.filter(is_default=True, active=True).first()
             if default_type:
                 self.fields['procurement_type'].initial = default_type
 
-    def clean(self):
-        super().clean()
+        selected_cluster_ids = []
+        if self.is_bound:
+            selected_cluster_ids = [cid for cid in self.data.getlist('clusters') if cid]
+        elif self.instance.pk:
+            selected_cluster_ids = list(self.instance.clusters.values_list('id', flat=True))
 
-        clusters = self.cleaned_data.get('clusters')
-        funders = self.cleaned_data.get('funders')
+        if selected_cluster_ids:
+            self.fields['responsible_officer'].queryset = (
+                User.objects.filter(is_active=True, clusters__id__in=selected_cluster_ids)
+                .distinct()
+                .order_by('first_name', 'last_name', 'username')
+            )
+        else:
+            self.fields['responsible_officer'].queryset = User.objects.none()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        clusters = cleaned_data.get('clusters')
+        funders = cleaned_data.get('funders')
+        categories = cleaned_data.get('category') or []
         if not clusters:
             self.add_error('clusters', 'Please select at least one cluster.')
         if not funders:
             self.add_error('funders', 'Please select at least one funder.')
 
+        valid_categories = {value for value, _ in Activity.CATEGORY_CHOICES}
+        if any(category_value not in valid_categories for category_value in categories):
+            self.add_error('category', 'Invalid category selection.')
+
         # Validate budget amounts
-        total_budget = self.cleaned_data.get('total_budget')
-        disbursed_amount = self.cleaned_data.get('disbursed_amount')
+        total_budget = cleaned_data.get('total_budget')
+        disbursed_amount = cleaned_data.get('disbursed_amount')
         
         if total_budget is None:
-            raise forms.ValidationError("Total budget is required.")
+            self.add_error('total_budget', 'Total budget is required.')
+            return cleaned_data
         if total_budget < 0:
-            raise forms.ValidationError("Total budget must be non-negative.")
-        if disbursed_amount and disbursed_amount < 0:
-            raise forms.ValidationError("Disbursed amount must be non-negative.")
-        if disbursed_amount and disbursed_amount > total_budget:
-            raise forms.ValidationError("Disbursed amount cannot exceed total budget.")
+            self.add_error('total_budget', 'Total budget must be non-negative.')
+        if disbursed_amount is not None and disbursed_amount < 0:
+            self.add_error('disbursed_amount', 'Disbursed amount must be non-negative.')
+        if disbursed_amount is not None and disbursed_amount > total_budget:
+            self.add_error('disbursed_amount', 'Disbursed amount cannot exceed total budget.')
         
         # Validate procurement fields
-        procurement_amount = self.cleaned_data.get('procurement_amount')
-        is_procurement = self.cleaned_data.get('is_procurement')
-        procurement_type = self.cleaned_data.get('procurement_type')
+        procurement_amount = cleaned_data.get('procurement_amount')
+        is_procurement = cleaned_data.get('is_procurement')
+        procurement_type = cleaned_data.get('procurement_type')
         
         if procurement_amount is not None:
             if procurement_amount < 0:
@@ -119,17 +150,23 @@ class ActivityForm(forms.ModelForm):
                 raise forms.ValidationError("Procurement type is required when procurement amount is set.")
         
         # Validate recurrence fields
-        is_recurring = self.cleaned_data.get('is_recurring')
-        recurrence_pattern = self.cleaned_data.get('recurrence_pattern')
-        recurrence_interval = self.cleaned_data.get('recurrence_interval')
+        is_recurring = cleaned_data.get('is_recurring')
+        recurrence_pattern = cleaned_data.get('recurrence_pattern')
+        recurrence_interval = cleaned_data.get('recurrence_interval')
         
         if is_recurring:
             if not recurrence_pattern:
                 raise forms.ValidationError("Recurrence pattern is required when recurring is enabled.")
             if recurrence_interval is None or recurrence_interval < 1:
                 raise forms.ValidationError("Recurrence interval must be at least 1.")
+
+        responsible_officer = cleaned_data.get('responsible_officer')
+        if responsible_officer and clusters:
+            selected_cluster_ids = list(clusters.values_list('id', flat=True))
+            if not responsible_officer.clusters.filter(id__in=selected_cluster_ids).exists():
+                self.add_error('responsible_officer', 'Responsible officer must belong to at least one selected cluster.')
         
-        return self.cleaned_data
+        return cleaned_data
 
 
 class BulkActionForm(forms.Form):

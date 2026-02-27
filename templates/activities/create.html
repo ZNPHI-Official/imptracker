@@ -72,6 +72,18 @@
                     </div>
 
                     <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                Category
+                            </label>
+                            {{ form.category }}
+                            {% if form.category.errors %}
+                                <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
                                 Clusters <span class="text-danger">*</span>
@@ -114,6 +126,7 @@
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.disbursed_amount.id_for_label }}" class="form-label">Disbursed Amount</label>
                             {{ form.disbursed_amount }}
+                            <div class="invalid-feedback d-none" id="disbursedLimitError">Disbursed amount cannot exceed total budget.</div>
                             {% if form.disbursed_amount.errors %}
                                 <div class="invalid-feedback d-block">{{ form.disbursed_amount.errors.0 }}</div>
                             {% endif %}
@@ -222,28 +235,31 @@
 {% endblock %}
 
 {% block page_js %}
+{{ officer_options|json_script:"officer-options-data" }}
+{{ procurement_type_options|json_script:"procurement-types-data" }}
+{{ existing_procurement_breakdowns|json_script:"existing-procurement-breakdowns-data" }}
 <script>
 $(document).ready(function() {
     let procurementItems = [];
     let itemCounter = 0;
+    const officerOptions = JSON.parse(document.getElementById('officer-options-data').textContent || '[]');
     
     // Procurement types from database
-    const procurementTypes = [
-        {% for ptype in procurement_types %}
-        { code: '{{ ptype.code }}', name: '{{ ptype.name }}' }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
+    const procurementTypes = JSON.parse(document.getElementById('procurement-types-data').textContent || '[]');
     
     // Load existing procurement breakdowns if editing
-    {% if form.instance.pk and form.instance.procurement_breakdowns %}
-        procurementItems = {{ form.instance.procurement_breakdowns|safe }};
+    const existingProcurementBreakdowns = JSON.parse(
+        document.getElementById('existing-procurement-breakdowns-data').textContent || '[]'
+    );
+    if (Array.isArray(existingProcurementBreakdowns) && existingProcurementBreakdowns.length > 0) {
+        procurementItems = existingProcurementBreakdowns;
         procurementItems.forEach((item, index) => {
             item.id = index;
             itemCounter = index + 1;
         });
         renderProcurementItems();
         updateProcurementSummary();
-    {% endif %}
+    }
     
     // Check if budget is entered and enable/disable procurement section
     function checkBudgetAndEnableProcurement() {
@@ -259,6 +275,36 @@ $(document).ready(function() {
             $('#procurementInfo').hide();
         }
     }
+
+    function validateDisbursedVsBudget(showAlert = false) {
+        const totalBudgetRaw = $('#id_total_budget').val();
+        const disbursedRaw = $('#id_disbursed_amount').val();
+        const totalBudget = parseFloat(totalBudgetRaw);
+        const disbursedAmount = parseFloat(disbursedRaw);
+        const disbursedInput = $('#id_disbursed_amount');
+        const disbursedLimitError = $('#disbursedLimitError');
+
+        if (!Number.isNaN(totalBudget) && totalBudget >= 0) {
+            disbursedInput.attr('max', totalBudget);
+        } else {
+            disbursedInput.removeAttr('max');
+        }
+
+        const exceeds = !Number.isNaN(totalBudget) && !Number.isNaN(disbursedAmount) && disbursedAmount > totalBudget;
+
+        if (exceeds) {
+            disbursedInput.addClass('is-invalid');
+            disbursedLimitError.removeClass('d-none').addClass('d-block');
+            if (showAlert) {
+                alert('Error: Disbursed amount cannot exceed total budget.');
+            }
+            return false;
+        }
+
+        disbursedInput.removeClass('is-invalid');
+        disbursedLimitError.removeClass('d-block').addClass('d-none');
+        return true;
+    }
     
     // Toggle recurrence fields
     function toggleRecurrenceFields() {
@@ -266,6 +312,45 @@ $(document).ready(function() {
             $('#recurrenceFields').slideDown();
         } else {
             $('#recurrenceFields').slideUp();
+        }
+    }
+
+    function updateResponsibleOfficerOptions() {
+        const selectedClusterIds = $('input[name="clusters"]:checked').map(function() {
+            return parseInt($(this).val(), 10);
+        }).get();
+        const officerSelect = $('#id_responsible_officer');
+        const currentOfficer = officerSelect.val();
+        const defaultOption = officerSelect.find('option[value=""]').first().clone();
+
+        officerSelect.empty();
+        if (defaultOption.length) {
+            officerSelect.append(defaultOption);
+        } else {
+            officerSelect.append('<option value="">---------</option>');
+        }
+
+        if (!selectedClusterIds.length) {
+            officerSelect.prop('disabled', true);
+            return;
+        }
+
+        const filteredOfficers = officerOptions.filter(officer =>
+            officer.cluster_ids.some(clusterId => selectedClusterIds.includes(clusterId))
+        );
+
+        filteredOfficers.forEach(officer => {
+            officerSelect.append(
+                $('<option></option>').attr('value', officer.id).text(officer.name)
+            );
+        });
+
+        officerSelect.prop('disabled', false);
+
+        if (currentOfficer && filteredOfficers.some(officer => String(officer.id) === String(currentOfficer))) {
+            officerSelect.val(String(currentOfficer));
+        } else {
+            officerSelect.val('');
         }
     }
     
@@ -403,18 +488,31 @@ $(document).ready(function() {
     $('#id_total_budget').on('input', function() {
         checkBudgetAndEnableProcurement();
         updateProcurementSummary();
+        validateDisbursedVsBudget();
+    });
+
+    $('#id_disbursed_amount').on('input', function() {
+        validateDisbursedVsBudget();
     });
     
     // Initialize on page load
     toggleRecurrenceFields();
     checkBudgetAndEnableProcurement();
+    validateDisbursedVsBudget();
+    updateResponsibleOfficerOptions();
     
     // Bind events
     $('#id_is_recurring').on('change', toggleRecurrenceFields);
+    $(document).on('change', 'input[name="clusters"]', updateResponsibleOfficerOptions);
     
     // Before form submit, validate and ensure procurement data is updated
     $('form').on('submit', function(e) {
         updateProcurementData();
+
+        if (!validateDisbursedVsBudget(true)) {
+            e.preventDefault();
+            return false;
+        }
         
         // Validate procurement doesn't exceed budget
         const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);

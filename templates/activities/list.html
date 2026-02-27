@@ -138,10 +138,9 @@
                 <label class="form-label mb-1">Month</label>
                 <select name="month" class="form-select">
                     <option value="">All</option>
-                    {% for month_num in available_months %}
-                        <option value="{{ month_num }}" {% if filters.month == month_num|stringformat:"s" %}selected{% endif %}>
-                            {% load humanize %}
-                            {{ month_num|date:"M" }}
+                    {% for month_option in available_month_options %}
+                        <option value="{{ month_option.value }}" {% if filters.month == month_option.value|stringformat:"s" %}selected{% endif %}>
+                            {{ month_option.label }}
                         </option>
                     {% endfor %}
                 </select>
@@ -172,10 +171,13 @@
 {% if activities %}
 <!-- Activities Table Card -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
             <i class="bi bi-table me-2"></i>All Activities
         </h5>
+        <a href="{% url 'export_activities_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
+        </a>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -184,12 +186,15 @@
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
+                        <th>Category</th>
                         <th>Clusters</th>
                         <th>Status</th>
                         <th>Planned Month</th>
                         <th>Quarter</th>
                         <th>Funder</th>
                         <th>Budget</th>
+                        <th>Disbursed</th>
+                        <th>Balance</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -202,6 +207,15 @@
                             </a>
                         </td>
                         <td>{{ activity.name }}</td>
+                        <td>
+                            {% if activity.category %}
+                                {% for category_label in activity.get_category_display_list %}
+                                    <span class="badge bg-info me-1">{{ category_label }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% for cluster in activity.clusters.all %}
                                 <span class="badge bg-secondary me-1">{{ cluster.short_name }}</span>
@@ -241,6 +255,12 @@
                         </td>
                         <td class="fw-medium">
                             {{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma|default:"0" }}
+                        </td>
+                        <td class="fw-medium">
+                            {{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|default:0|floatformat:2|intcomma }}
+                        </td>
+                        <td class="fw-medium">
+                            {{ activity.currency.code|default:"ZMK" }} {{ activity.balance|floatformat:2|intcomma }}
                         </td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm" role="group">
@@ -306,9 +326,9 @@ document.addEventListener('DOMContentLoaded', function() {
         responsive: true,
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        order: [[4, 'desc']],
+        order: [[5, 'desc']],
         columnDefs: [
-            { orderable: false, targets: 8 }
+            { orderable: false, targets: 11 }
         ],
         language: {
             search: "_INPUT_",
