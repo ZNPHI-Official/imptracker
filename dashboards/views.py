@@ -40,12 +40,20 @@ def dashboard(request):
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     year = request.GET.get('year')
+    quarter = request.GET.get('quarter')
     status = request.GET.get('status')
     cluster = request.GET.get('cluster')
     funder = request.GET.get('funder')
     
     # Build queryset with filters
     qs = Activity.objects.filter(deleted=False)
+
+    # Match activities list default behavior: current year when no year/date filters are provided
+    if not year and not start_date and not end_date:
+        current_year = date.today().year
+        available_years = Activity.objects.filter(deleted=False).values_list('year', flat=True).distinct()
+        if current_year in available_years:
+            year = str(current_year)
     
     # Apply role-based filtering
     role_category = get_user_role_category(request.user)
@@ -72,6 +80,16 @@ def dashboard(request):
             qs = qs.filter(year=int(year))
         except (ValueError, TypeError):
             pass
+
+    if quarter:
+        try:
+            quarter_value = int(quarter)
+            if quarter_value in [1, 2, 3, 4]:
+                qs = qs.filter(quarter=quarter_value)
+            else:
+                quarter = ''
+        except (ValueError, TypeError):
+            quarter = ''
     
     if status:
         qs = qs.filter(status__name=status)
@@ -84,7 +102,7 @@ def dashboard(request):
     
     # First get distinct activities to avoid M2M duplication issues
     distinct_activity_ids = qs.values_list('id', flat=True).distinct()
-    qs_distinct = Activity.objects.filter(id__in=distinct_activity_ids)
+    qs_distinct = Activity.objects.filter(deleted=False, id__in=distinct_activity_ids)
 
     # Aggregations
     total_activities = qs_distinct.count()
@@ -359,6 +377,7 @@ def dashboard(request):
         'user_role': role_category,
         'show_cluster_chart': show_cluster_chart,
         'show_funder_chart': show_funder_chart,
+        'selected_quarter': str(quarter) if quarter else '',
         # Chart data for new visualizations
         'activities_by_cluster_data': json.dumps({
             'labels': cluster_labels,

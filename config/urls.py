@@ -35,6 +35,7 @@ urlpatterns = [
 	path('activities/', activities_views.activities_list, name='activities_list'),
 	path('activities/create/', activities_views.create_activity, name='create_activity'),
 	path('activities/bulk-action/', activities_views.bulk_action, name='bulk_action'),
+	path('activities/export/', activities_views.export_activities_excel, name='export_activities_excel'),
 	path('activities/procurement/', activities_views.procurement_list, name='procurement_list'),
 	path('activities/procurement/export/', activities_views.export_procurement_excel, name='export_procurement_excel'),
 	path('activities/procurement/<int:pk>/', activities_views.procurement_detail, name='procurement_detail'),
@@ -56,4 +57,5 @@ urlpatterns = [
 	# Include app URLs
 	path('accounts/', include('accounts.urls')),
 	path('masters/', include('masters.urls')),
+	path('support/', include('support.urls')),
 ]

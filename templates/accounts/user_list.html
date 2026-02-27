@@ -40,7 +40,16 @@
                 <tbody>
                     {% for user_obj in users %}
                     <tr>
-                        <td><strong>{{ user_obj.username }}</strong></td>
+                        <td>
+                            <strong>{{ user_obj.username }}</strong>
+                            <div class="text-muted small">
+                                {% if user_obj.last_login %}
+                                    {{ user_obj.last_login|timesince }} ago
+                                {% else %}
+                                    Never logged in
+                                {% endif %}
+                            </div>
+                        </td>
                         <td>{{ user_obj.get_full_name|default:"-" }}</td>
                         <td>{{ user_obj.email|default:"-" }}</td>
                         <td>

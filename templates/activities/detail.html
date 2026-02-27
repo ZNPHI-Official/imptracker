@@ -283,6 +283,18 @@
             </div>
             <div class="card-body">
                 <div class="detail-group mb-3">
+                    <label class="detail-label">Category</label>
+                    <p class="detail-value mb-0">
+                        {% if activity.category %}
+                            {% for category_label in activity.get_category_display_list %}
+                                <span class="badge bg-info me-1">{{ category_label }}</span>
+                            {% endfor %}
+                        {% else %}
+                            Not specified
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="detail-group mb-3">
                     <label class="detail-label">Quarter</label>
                     <p class="detail-value mb-0">{{ activity.quarter|default:"Not specified" }}</p>
                 </div>

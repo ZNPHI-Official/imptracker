@@ -11,7 +11,24 @@ from accounts.models import Cluster, User
 from masters.models import Funder, ActivityStatus, Currency, ProcurementType
 from audit.models import AuditLog
 import json
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
+
+
+MONTH_SHORT_NAMES = {
+    1: 'Jan',
+    2: 'Feb',
+    3: 'Mar',
+    4: 'Apr',
+    5: 'May',
+    6: 'Jun',
+    7: 'Jul',
+    8: 'Aug',
+    9: 'Sep',
+    10: 'Oct',
+    11: 'Nov',
+    12: 'Dec',
+}
 
 
 # Permission helper functions
@@ -40,6 +57,49 @@ def can_manage_users(user):
     return any(has_role(user, role) for role in ['System Admin', 'User Manager'])
 
 
+def get_responsible_officer_options():
+    """Return active officers and their cluster memberships for dynamic filtering in forms."""
+    officers = User.objects.filter(is_active=True).prefetch_related('clusters').order_by('first_name', 'last_name', 'username')
+    options = []
+    for officer in officers:
+        full_name = officer.get_full_name().strip() if officer.get_full_name() else officer.username
+        options.append({
+            'id': officer.id,
+            'name': full_name,
+            'cluster_ids': list(officer.clusters.values_list('id', flat=True)),
+        })
+    return options
+
+
+def get_procurement_type_options():
+    """Return active procurement types for create/edit JS UI."""
+    return list(
+        ProcurementType.objects.filter(active=True)
+        .order_by('name')
+        .values('code', 'name')
+    )
+
+
+def safe_parse_json_list(raw_value):
+    """Safely parse JSON list payloads and return [] on invalid input."""
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def can_use_cluster_filter(user):
+    """Check if user should see the cluster filter"""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return any(has_role(user, role) for role in ['System Admin', 'Data Manager', 'Project Coordinator', 'Viewer'])
+
+
 def get_user_role_category(user):
     """Categorize user into role categories for access control"""
     if user.is_superuser or has_role(user, 'System Admin'):
@@ -56,15 +116,8 @@ def get_user_role_category(user):
 def apply_role_based_filters(queryset, user):
     """Apply role-based filtering to queryset based on user role"""
     role_category = get_user_role_category(user)
-    
-    if role_category == 'coordinator':
-        # Project Coordinator: Only see their coordinated funder's activities
-        if user.coordinated_funder:
-            queryset = queryset.filter(funders__id=user.coordinated_funder.id)
-        else:
-            # No funder assigned, show no data
-            queryset = queryset.none()
-    elif role_category == 'manager':
+
+    if role_category == 'manager':
         # Activity Manager: Only see activities from their clusters
         user_clusters = user.clusters.all()
         if user_clusters.exists():
@@ -72,7 +125,7 @@ def apply_role_based_filters(queryset, user):
         else:
             # No clusters assigned, show no data
             queryset = queryset.none()
-    # For 'admin' and 'viewer': Show all data (no filtering)
+    # For 'admin', 'viewer', and 'coordinator': Show all data (no filtering)
     
     return queryset
 
@@ -97,17 +150,18 @@ def activities_list(request):
     cluster = request.GET.get('cluster')
     funder = request.GET.get('funder')
     status = request.GET.get('status')
-    quarter = request.GET.getlist('quarter')
+    quarter = request.GET.get('quarter')
     month = request.GET.get('month')
-    q = request.GET.get('q')  # Search query
+    search_query = request.GET.get('q')  # Search query
     procurement_status = request.GET.get('procurement_status', 'all')  # New filter
     recurring_filter = request.GET.get('recurring', 'all')  # New filter
     show_all_years = request.GET.get('all_years') == '1'  # New parameter
 
-    # Set default year to current year (2026) if no year filter and not showing all years
-    if not year and not show_all_years and 2026 in available_years:
-        year = '2026'
-        qs = qs.filter(year=2026)
+    # Set default year to current year if no year filter and not showing all years
+    current_year = date.today().year
+    if not year and not show_all_years and current_year in available_years:
+        year = str(current_year)
+        qs = qs.filter(year=current_year)
     elif year:
         try:
             qs = qs.filter(year=int(year))
@@ -117,11 +171,11 @@ def activities_list(request):
     # Apply role-based filtering
     role_category = get_user_role_category(request.user)
     qs = apply_role_based_filters(qs, request.user)
+    qs = qs.filter(deleted=False)
     
     # Determine which filters to show based on user role
-    user_clusters = request.user.clusters.all() if request.user else []
-    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
-    show_funder_filter = role_category not in ['coordinator', 'manager']
+    show_cluster_filter = can_use_cluster_filter(request.user)
+    show_funder_filter = True
     
     needs_distinct = False
 
@@ -146,15 +200,12 @@ def activities_list(request):
             qs = qs.filter(status__name=status)
 
     if quarter:
-        # Filter by multiple quarters if provided
-        valid_quarters = []
-        for q in quarter:
-            try:
-                valid_quarters.append(int(q))
-            except ValueError:
-                pass
-        if valid_quarters:
-            qs = qs.filter(quarter__in=valid_quarters)
+        try:
+            quarter_num = int(quarter)
+            if quarter_num in [1, 2, 3, 4]:
+                qs = qs.filter(quarter=quarter_num)
+        except ValueError:
+            pass
 
     if month:
         try:
@@ -162,8 +213,8 @@ def activities_list(request):
         except ValueError:
             pass
 
-    if q:
-        qs = qs.filter(Q(name__icontains=q) | Q(activity_id__icontains=q))
+    if search_query:
+        qs = qs.filter(Q(name__icontains=search_query) | Q(activity_id__icontains=search_query))
 
     if needs_distinct:
         qs = qs.distinct()
@@ -221,9 +272,9 @@ def activities_list(request):
         show_current_year_url = request.get_full_path()
 
     # Determine available months based on selected quarter
-    if quarter and len(quarter) == 1:
+    if quarter:
         try:
-            quarter_num = int(quarter[0])
+            quarter_num = int(quarter)
             if quarter_num == 1:
                 available_months = [1, 2, 3]
             elif quarter_num == 2:
@@ -234,10 +285,15 @@ def activities_list(request):
                 available_months = [10, 11, 12]
             else:
                 available_months = list(range(1, 13))
-        except (ValueError, IndexError):
+        except ValueError:
             available_months = list(range(1, 13))
     else:
         available_months = list(range(1, 13))
+
+    available_month_options = [
+        {'value': month_num, 'label': MONTH_SHORT_NAMES.get(month_num, str(month_num))}
+        for month_num in available_months
+    ]
 
     # Get filtered data for visibility logic
     filtered_clusters = qs.values('clusters').distinct().count()
@@ -251,6 +307,7 @@ def activities_list(request):
         'users': User.objects.filter(is_active=True),
         'years': available_years,
         'available_months': available_months,
+        'available_month_options': available_month_options,
         'filters': {
             'year': year,
             'cluster': cluster,
@@ -258,7 +315,7 @@ def activities_list(request):
             'status': status,
             'quarter': quarter,
             'month': month,
-            'q': q,
+            'q': search_query,
             'procurement_status': procurement_status,
             'recurring': recurring_filter,
             'all_years': show_all_years,
@@ -325,6 +382,9 @@ def edit_activity(request, pk):
             'activity': activity,
             'title': 'Edit Activity',
             'procurement_types': procurement_types,
+            'officer_options': get_responsible_officer_options(),
+            'procurement_type_options': get_procurement_type_options(),
+            'existing_procurement_breakdowns': activity.procurement_breakdowns or [],
         }
         return render(request, 'activities/create.html', context)
     
@@ -364,9 +424,9 @@ def edit_activity(request, pk):
                 elif field == 'funders':
                     activity.funders.set([Funder.objects.get(id=int(id)) for id in value])
                 elif field == 'total_budget':
-                    activity.total_budget = float(value) if value else 0
+                    activity.total_budget = Decimal(str(value)) if value not in [None, ''] else Decimal('0')
                 elif field == 'disbursed_amount':
-                    activity.disbursed_amount = float(value) if value else 0
+                    activity.disbursed_amount = Decimal(str(value)) if value not in [None, ''] else Decimal('0')
                 elif field == 'currency':
                     activity.currency = Currency.objects.get(id=int(value))
                 elif field == 'planned_month':
@@ -460,6 +520,13 @@ def edit_activity(request, pk):
                     'form': form,
                     'activity': activity,
                     'title': 'Edit Activity',
+                    'procurement_types': ProcurementType.objects.filter(active=True).order_by('name'),
+                    'officer_options': get_responsible_officer_options(),
+                    'procurement_type_options': get_procurement_type_options(),
+                    'existing_procurement_breakdowns': (
+                        safe_parse_json_list(request.POST.get('procurement_breakdowns'))
+                        or (form.instance.procurement_breakdowns or [])
+                    ),
                 }
                 return render(request, 'activities/create.html', context)
     
@@ -506,6 +573,12 @@ def create_activity(request):
         'form': form,
         'title': 'Create New Activity',
         'procurement_types': procurement_types,
+        'officer_options': get_responsible_officer_options(),
+        'procurement_type_options': get_procurement_type_options(),
+        'existing_procurement_breakdowns': (
+            safe_parse_json_list(request.POST.get('procurement_breakdowns'))
+            if request.method == 'POST' else []
+        ),
     }
     return render(request, 'activities/create.html', context)
 
@@ -902,9 +975,8 @@ def procurement_list(request):
     qs = apply_role_based_filters(qs, request.user)
     
     # Determine which filters to show based on user role
-    user_clusters = request.user.clusters.all() if request.user else []
-    show_cluster_filter = role_category != 'coordinator' and len(user_clusters) > 1
-    show_funder_filter = role_category not in ['coordinator', 'manager']
+    show_cluster_filter = can_use_cluster_filter(request.user)
+    show_funder_filter = True
 
     status = request.GET.get('status')
     funder = request.GET.get('funder')
@@ -1091,6 +1163,214 @@ def export_procurement_excel(request):
     )
     response['Content-Disposition'] = f'attachment; filename=procurement_activities_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     
+    wb.save(response)
+    return response
+
+
+@login_required
+def export_activities_excel(request):
+    """Export filtered activities list to Excel with comprehensive details."""
+    if not can_view_activities(request.user):
+        return HttpResponseForbidden("You do not have permission to export activities")
+
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    qs = (
+        Activity.objects.filter(deleted=False)
+        .select_related('status', 'currency', 'responsible_officer', 'procurement_type', 'parent_activity')
+        .prefetch_related('clusters', 'funders')
+        .order_by('-year', 'activity_id')
+    )
+
+    available_years = sorted(
+        Activity.objects.filter(deleted=False).values_list('year', flat=True).distinct(),
+        reverse=True
+    )
+
+    year = request.GET.get('year')
+    cluster = request.GET.get('cluster')
+    funder = request.GET.get('funder')
+    status = request.GET.get('status')
+    quarter = request.GET.get('quarter')
+    month = request.GET.get('month')
+    search_query = request.GET.get('q')
+    procurement_status = request.GET.get('procurement_status', 'all')
+    recurring_filter = request.GET.get('recurring', 'all')
+    show_all_years = request.GET.get('all_years') == '1'
+
+    current_year = date.today().year
+    if not year and not show_all_years and current_year in available_years:
+        year = str(current_year)
+        qs = qs.filter(year=current_year)
+    elif year:
+        try:
+            qs = qs.filter(year=int(year))
+        except ValueError:
+            pass
+
+    qs = apply_role_based_filters(qs, request.user)
+    qs = qs.filter(deleted=False)
+
+    needs_distinct = False
+
+    if cluster:
+        if cluster.isdigit():
+            qs = qs.filter(clusters__id=int(cluster))
+        else:
+            qs = qs.filter(clusters__short_name=cluster)
+        needs_distinct = True
+
+    if funder:
+        if funder.isdigit():
+            qs = qs.filter(funders__id=int(funder))
+        else:
+            qs = qs.filter(funders__code=funder)
+        needs_distinct = True
+
+    if status:
+        if status.isdigit():
+            qs = qs.filter(status__id=int(status))
+        else:
+            qs = qs.filter(status__name=status)
+
+    if quarter:
+        try:
+            quarter_num = int(quarter)
+            if quarter_num in [1, 2, 3, 4]:
+                qs = qs.filter(quarter=quarter_num)
+        except ValueError:
+            pass
+
+    if month:
+        try:
+            qs = qs.filter(planned_month__month=int(month))
+        except ValueError:
+            pass
+
+    if search_query:
+        qs = qs.filter(Q(name__icontains=search_query) | Q(activity_id__icontains=search_query))
+
+    if needs_distinct:
+        qs = qs.distinct()
+
+    if procurement_status == 'procurement_only':
+        qs = qs.filter(is_procurement=True)
+    elif procurement_status == 'has_procurement':
+        qs = qs.filter(Q(is_procurement=True) | Q(has_partial_procurement=True))
+    elif procurement_status == 'non_procurement':
+        qs = qs.filter(is_procurement=False, has_partial_procurement=False)
+
+    if recurring_filter == 'recurring_only':
+        qs = qs.filter(is_recurring=True)
+    elif recurring_filter == 'generated':
+        qs = qs.filter(generated_from_recurrence=True)
+    elif recurring_filter == 'non_recurring':
+        qs = qs.filter(is_recurring=False, generated_from_recurrence=False)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Activities"
+
+    header_fill = PatternFill(start_color="0066CC", end_color="0066CC", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    headers = [
+        'Activity ID', 'Activity Name', 'Category', 'Year', 'Status', 'Planned Month', 'Quarter',
+        'Clusters', 'Funders', 'Currency', 'Total Budget', 'Disbursed Amount', 'Balance',
+        'Responsible Officer', 'Fully Implemented By', 'Actual Start Date', 'Actual Completion Date',
+        'Retired', 'Technical Report Available', 'Notes',
+        'Is Recurring', 'Recurrence Pattern', 'Recurrence Interval', 'Recurrence End Date',
+        'Generated From Recurrence', 'Parent Activity ID',
+        'Is Procurement', 'Has Partial Procurement', 'Procurement Type', 'Procurement Amount', 'Procurement Breakdown'
+    ]
+
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+
+    row_num = 2
+    for activity in qs:
+        category_str = ', '.join(activity.get_category_display_list()) if activity.category else ''
+        clusters_str = ', '.join([c.short_name for c in activity.clusters.all()])
+        funders_str = ', '.join([f.name for f in activity.funders.all()])
+        officer = ''
+        if activity.responsible_officer:
+            officer = activity.responsible_officer.get_full_name() or activity.responsible_officer.username
+
+        procurement_breakdown = ''
+        if activity.procurement_breakdowns and isinstance(activity.procurement_breakdowns, list):
+            breakdown_lines = []
+            for item in activity.procurement_breakdowns:
+                if isinstance(item, dict):
+                    item_type = item.get('type', '')
+                    amount = item.get('amount', 0)
+                    description = item.get('description', '')
+                    breakdown_lines.append(f"{item_type}: {amount} ({description})")
+            procurement_breakdown = '; '.join(breakdown_lines)
+
+        ws.cell(row=row_num, column=1).value = activity.activity_id
+        ws.cell(row=row_num, column=2).value = activity.name
+        ws.cell(row=row_num, column=3).value = category_str
+        ws.cell(row=row_num, column=4).value = activity.year
+        ws.cell(row=row_num, column=5).value = activity.status.name if activity.status else ''
+        ws.cell(row=row_num, column=6).value = activity.planned_month.strftime('%Y-%m-%d') if activity.planned_month else ''
+        ws.cell(row=row_num, column=7).value = activity.quarter or ''
+        ws.cell(row=row_num, column=8).value = clusters_str
+        ws.cell(row=row_num, column=9).value = funders_str
+        ws.cell(row=row_num, column=10).value = activity.currency.code if activity.currency else 'ZMK'
+        ws.cell(row=row_num, column=11).value = float(activity.total_budget or 0)
+        ws.cell(row=row_num, column=12).value = float(activity.disbursed_amount or 0)
+        ws.cell(row=row_num, column=13).value = float(activity.balance() or 0)
+        ws.cell(row=row_num, column=14).value = officer
+        ws.cell(row=row_num, column=15).value = activity.fully_implemented_by.strftime('%Y-%m-%d') if activity.fully_implemented_by else ''
+        ws.cell(row=row_num, column=16).value = activity.actual_start_date.strftime('%Y-%m-%d') if activity.actual_start_date else ''
+        ws.cell(row=row_num, column=17).value = activity.actual_completion_date.strftime('%Y-%m-%d') if activity.actual_completion_date else ''
+        ws.cell(row=row_num, column=18).value = 'Yes' if activity.retired else 'No'
+        ws.cell(row=row_num, column=19).value = 'Yes' if activity.technical_report_available else 'No'
+        ws.cell(row=row_num, column=20).value = activity.notes or ''
+        ws.cell(row=row_num, column=21).value = 'Yes' if activity.is_recurring else 'No'
+        ws.cell(row=row_num, column=22).value = activity.get_recurrence_pattern_display() if activity.recurrence_pattern else ''
+        ws.cell(row=row_num, column=23).value = activity.recurrence_interval or ''
+        ws.cell(row=row_num, column=24).value = activity.recurrence_end_date.strftime('%Y-%m-%d') if activity.recurrence_end_date else ''
+        ws.cell(row=row_num, column=25).value = 'Yes' if activity.generated_from_recurrence else 'No'
+        ws.cell(row=row_num, column=26).value = activity.parent_activity.activity_id if activity.parent_activity else ''
+        ws.cell(row=row_num, column=27).value = 'Yes' if activity.is_procurement else 'No'
+        ws.cell(row=row_num, column=28).value = 'Yes' if activity.has_partial_procurement else 'No'
+        ws.cell(row=row_num, column=29).value = activity.procurement_type.name if activity.procurement_type else ''
+        ws.cell(row=row_num, column=30).value = float(activity.procurement_amount or 0)
+        ws.cell(row=row_num, column=31).value = procurement_breakdown
+
+        row_num += 1
+
+    column_widths = [
+        15, 45, 22, 8, 20, 14, 8, 24, 28, 10, 16, 16, 14,
+        24, 16, 16, 18, 10, 16, 45,
+        12, 18, 16, 16, 18, 16,
+        14, 20, 18, 16, 55
+    ]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+
+    for row in range(2, row_num):
+        for col in [11, 12, 13, 30]:
+            ws.cell(row=row, column=col).number_format = '#,##0.00'
+
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{max(row_num - 1, 1)}"
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename=activities_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    )
+
     wb.save(response)
     return response
 

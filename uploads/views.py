@@ -280,7 +280,7 @@ def upload_activities(request):
             # Check for duplicates or updates
             if activity_id and pd.notna(activity_id):
                 # Check if activity ID exists in DB
-                existing = Activity.objects.filter(activity_id=str(activity_id).strip()).first()
+                existing = Activity.objects.filter(activity_id=str(activity_id).strip(), deleted=False).first()
                 if existing:
                     updates.append({
                         'row': row_num,
@@ -296,6 +296,7 @@ def upload_activities(request):
                 try:
                     year_val = parsed_dt.year
                     similar = Activity.objects.filter(
+                        deleted=False,
                         name__iexact=str(name).strip(),
                         year=year_val
                     )
@@ -546,7 +547,7 @@ def upload_activities(request):
                 # Check if this is an update operation
                 existing = None
                 if activity_id and pd.notna(activity_id):
-                    existing = Activity.objects.filter(activity_id=str(activity_id).strip()).first()
+                    existing = Activity.objects.filter(activity_id=str(activity_id).strip(), deleted=False).first()
                 
                 if existing:
                     # Update existing activity

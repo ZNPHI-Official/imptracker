@@ -43,7 +43,6 @@
                 </select>
             </div>
 
-            {% if user_role != 'coordinator' %}
             <div class="col-12 col-md-3">
                 <label class="form-label mb-1">Status</label>
                 <select name="status" class="form-select">
@@ -53,7 +52,6 @@
                     {% endfor %}
                 </select>
             </div>
-            {% endif %}
 
             {% if show_funder_filter %}
             <div class="col-12 col-md-3">
@@ -67,7 +65,6 @@
             </div>
             {% endif %}
 
-            {% if user_role != 'coordinator' %}
             <div class="col-6 col-md-2">
                 <label class="form-label mb-1">Quarter</label>
                 <select name="quarter" class="form-select">
@@ -78,7 +75,6 @@
                     <option value="4" {% if filters.quarter == "4" %}selected{% endif %}>Q4</option>
                 </select>
             </div>
-            {% endif %}
             </div>
             {% comment %} <div class="col-6 col-md-3">
                 <label class="form-label mb-1">Assignee</label>

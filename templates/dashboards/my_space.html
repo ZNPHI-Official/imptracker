@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% load account_tags %}
 {% block title %}My Space{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'dashboards:dashboard' %}">Dashboard</a></li>
@@ -13,9 +14,11 @@
       <h1 class="display-5 fw-bold mb-1">My Space</h1>
       <p class="text-muted fs-5 mb-0">Personal activity dashboard for Q{{ current_quarter }}, {{ today|date:"Y" }}</p>
     </div>
+    {% if not request.user|has_role:"Viewer" %}
     <a href="{% url 'create_activity' %}" class="btn btn-lg btn-primary">
       <i class="bi bi-plus-circle me-2"></i>New Activity
     </a>
+    {% endif %}
   </div>
 
   <!-- Key Metrics Row -->

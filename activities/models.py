@@ -8,8 +8,15 @@ import calendar
 from datetime import date
 
 class Activity(models.Model):
+    CATEGORY_CHOICES = [
+        ('prevention', 'Prevention'),
+        ('detection', 'Detection'),
+        ('response', 'Response'),
+    ]
+
     activity_id=models.CharField(max_length=15,unique=True)
     name=models.TextField()
+    category=models.JSONField(default=list, blank=True, help_text="Activity categories")
     year=models.IntegerField()
     # Activities may be co-funded and implemented by multiple clusters
     funders = models.ManyToManyField(Funder, blank=True, related_name='activities')
@@ -125,6 +132,10 @@ class Activity(models.Model):
         da = self.disbursed_amount or Decimal('0.00')
         return tb - da
 
+    def get_category_display_list(self):
+        choice_map = dict(self.CATEGORY_CHOICES)
+        return [choice_map.get(value, value) for value in (self.category or [])]
+
     def clean(self):
         # Validate numeric fields
         from django.core.exceptions import ValidationError
@@ -150,6 +161,12 @@ class Activity(models.Model):
                 raise ValidationError({'recurrence_pattern': 'Recurrence pattern is required when recurring is enabled.'})
             if self.recurrence_interval is None or self.recurrence_interval < 1:
                 raise ValidationError({'recurrence_interval': 'Recurrence interval must be at least 1.'})
+
+        if self.category:
+            valid_categories = {value for value, _ in self.CATEGORY_CHOICES}
+            invalid_categories = [value for value in self.category if value not in valid_categories]
+            if invalid_categories:
+                raise ValidationError({'category': 'Invalid category selection.'})
         
         # Cannot mark a generated instance as recurring
         if self.generated_from_recurrence and self.is_recurring:
