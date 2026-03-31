@@ -1,4 +1,17 @@
 from django.apps import AppConfig
+from django.db.models.signals import post_migrate
+
+
+def _setup_fleet_permissions_after_migrate(sender, **kwargs):
+    if sender.name != "fleet":
+        return
+
+    from fleet.permissions import setup_fleet_permissions
+
+    try:
+        setup_fleet_permissions()
+    except Exception:
+        pass
 
 
 class FleetConfig(AppConfig):
@@ -9,11 +22,7 @@ class FleetConfig(AppConfig):
     def ready(self):
         """Import signals when Django app is ready."""
         import fleet.signals  # noqa
-        from fleet.permissions import setup_fleet_permissions
-        
-        # Setup permissions and groups on app ready
-        try:
-            setup_fleet_permissions()
-        except Exception:
-            # Handle database not ready during migrations
-            pass
+        post_migrate.connect(
+            _setup_fleet_permissions_after_migrate,
+            dispatch_uid="fleet.setup_permissions.post_migrate"
+        )
