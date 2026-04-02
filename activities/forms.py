@@ -44,8 +44,8 @@ class ActivityForm(forms.ModelForm):
             'name': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Activity name/description'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
             'planned_month': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'total_budget': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
-            'disbursed_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'total_budget': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': '0.00'}),
+            'disbursed_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': '0.00'}),
             'currency': forms.Select(attrs={'class': 'form-select'}),
             'responsible_officer': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Additional notes'}),
@@ -57,7 +57,7 @@ class ActivityForm(forms.ModelForm):
             # Procurement
             'is_procurement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'procurement_type': forms.Select(attrs={'class': 'form-select'}),
-            'procurement_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'procurement_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': '0.00'}),
         }
         labels = {
             'name': 'Activity Name',
@@ -143,11 +143,13 @@ class ActivityForm(forms.ModelForm):
         
         if procurement_amount is not None:
             if procurement_amount < 0:
-                raise forms.ValidationError("Procurement amount must be non-negative.")
-            if procurement_amount > total_budget:
-                raise forms.ValidationError("Procurement amount cannot exceed total budget.")
+                self.add_error('procurement_amount', "Procurement amount must be non-negative.")
+            if total_budget is not None and procurement_amount > total_budget:
+                self.add_error('procurement_amount', "Procurement amount cannot exceed total budget.")
             if procurement_amount > 0 and not procurement_type:
-                raise forms.ValidationError("Procurement type is required when procurement amount is set.")
+                self.add_error('procurement_type', "Procurement type is required when procurement amount is set.")
+            if procurement_amount > 0 and not is_procurement:
+                self.add_error('is_procurement', "Please mark as a procurement when specifying a procurement amount.")
         
         # Validate recurrence fields
         is_recurring = cleaned_data.get('is_recurring')
@@ -156,9 +158,9 @@ class ActivityForm(forms.ModelForm):
         
         if is_recurring:
             if not recurrence_pattern:
-                raise forms.ValidationError("Recurrence pattern is required when recurring is enabled.")
+                self.add_error('recurrence_pattern', "Recurrence pattern is required when recurring is enabled.")
             if recurrence_interval is None or recurrence_interval < 1:
-                raise forms.ValidationError("Recurrence interval must be at least 1.")
+                self.add_error('recurrence_interval', "Recurrence interval must be at least 1.")
 
         responsible_officer = cleaned_data.get('responsible_officer')
         if responsible_officer and clusters:

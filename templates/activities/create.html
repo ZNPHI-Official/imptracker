@@ -27,15 +27,15 @@
             <div class="card-body p-4">
                 <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
                     {% csrf_token %}
-                    
+
                     {% if form.non_field_errors %}
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-circle me-2"></i>
-                            {% for error in form.non_field_errors %}
-                                <div>{{ error }}</div>
-                            {% endfor %}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                     {% endif %}
 
                     <div class="row">
@@ -45,7 +45,7 @@
                             </label>
                             {{ form.name }}
                             {% if form.name.errors %}
-                                <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -57,16 +57,17 @@
                             </label>
                             {{ form.status }}
                             {% if form.status.errors %}
-                                <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="{{ form.planned_month.id_for_label }}" class="form-label">
-                                Planned Month {% if form.planned_month.field.required %}<span class="text-danger">*</span>{% endif %}
+                                Planned Month {% if form.planned_month.field.required %}<span
+                                    class="text-danger">*</span>{% endif %}
                             </label>
                             {{ form.planned_month }}
                             {% if form.planned_month.errors %}
-                                <div class="invalid-feedback d-block">{{ form.planned_month.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.planned_month.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -78,7 +79,7 @@
                             </label>
                             {{ form.category }}
                             {% if form.category.errors %}
-                                <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -90,7 +91,7 @@
                             </label>
                             {{ form.clusters }}
                             {% if form.clusters.errors %}
-                                <div class="invalid-feedback d-block">{{ form.clusters.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.clusters.errors.0 }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
@@ -99,7 +100,7 @@
                             </label>
                             {{ form.funders }}
                             {% if form.funders.errors %}
-                                <div class="invalid-feedback d-block">{{ form.funders.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.funders.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -111,33 +112,41 @@
                             </label>
                             {{ form.currency }}
                             {% if form.currency.errors %}
-                                <div class="invalid-feedback d-block">{{ form.currency.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.currency.errors.0 }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="{{ form.total_budget.id_for_label }}" class="form-label">
-                                Total Budget {% if form.total_budget.field.required %}<span class="text-danger">*</span>{% endif %}
+                                Total Budget {% if form.total_budget.field.required %}<span
+                                    class="text-danger">*</span>{% endif %}
                             </label>
                             {{ form.total_budget }}
+                            <div class="invalid-feedback d-none" id="totalBudgetNegError">Total budget must be
+                                non-negative.</div>
                             {% if form.total_budget.errors %}
-                                <div class="invalid-feedback d-block">{{ form.total_budget.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.total_budget.errors.0 }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="{{ form.disbursed_amount.id_for_label }}" class="form-label">Disbursed Amount</label>
+                            <label for="{{ form.disbursed_amount.id_for_label }}" class="form-label">Disbursed
+                                Amount</label>
                             {{ form.disbursed_amount }}
-                            <div class="invalid-feedback d-none" id="disbursedLimitError">Disbursed amount cannot exceed total budget.</div>
+                            <div class="invalid-feedback d-none" id="disbursedNegError">Disbursed amount must be
+                                non-negative.</div>
+                            <div class="invalid-feedback d-none" id="disbursedLimitError">Disbursed amount cannot exceed
+                                total budget.</div>
                             {% if form.disbursed_amount.errors %}
-                                <div class="invalid-feedback d-block">{{ form.disbursed_amount.errors.0 }}</div>
+                            <div class="invalid-feedback d-block">{{ form.disbursed_amount.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="{{ form.responsible_officer.id_for_label }}" class="form-label">Responsible Officer</label>
+                        <label for="{{ form.responsible_officer.id_for_label }}" class="form-label">Responsible
+                            Officer</label>
                         {{ form.responsible_officer }}
                         {% if form.responsible_officer.errors %}
-                            <div class="invalid-feedback d-block">{{ form.responsible_officer.errors.0 }}</div>
+                        <div class="invalid-feedback d-block">{{ form.responsible_officer.errors.0 }}</div>
                         {% endif %}
                     </div>
 
@@ -145,14 +154,15 @@
                         <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
                         {{ form.notes }}
                         {% if form.notes.errors %}
-                            <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
+                        <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
                         {% endif %}
                     </div>
 
                     <!-- Recurrence Section -->
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h6 class="card-title mb-0"><i class="bi bi-arrow-repeat me-2"></i>Recurring Activity Settings</h6>
+                            <h6 class="card-title mb-0"><i class="bi bi-arrow-repeat me-2"></i>Recurring Activity
+                                Settings</h6>
                         </div>
                         <div class="card-body">
                             <div class="form-check mb-3">
@@ -163,15 +173,18 @@
                             </div>
                             <div class="row" id="recurrenceFields" style="display: none;">
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.recurrence_pattern.id_for_label }}" class="form-label">Pattern</label>
+                                    <label for="{{ form.recurrence_pattern.id_for_label }}"
+                                        class="form-label">Pattern</label>
                                     {{ form.recurrence_pattern }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.recurrence_interval.id_for_label }}" class="form-label">Repeat Every</label>
+                                    <label for="{{ form.recurrence_interval.id_for_label }}" class="form-label">Repeat
+                                        Every</label>
                                     {{ form.recurrence_interval }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.recurrence_end_date.id_for_label }}" class="form-label">End Date</label>
+                                    <label for="{{ form.recurrence_end_date.id_for_label }}" class="form-label">End
+                                        Date</label>
                                     {{ form.recurrence_end_date }}
                                 </div>
                             </div>
@@ -193,34 +206,38 @@
                             </div>
                             <div class="alert alert-info alert-sm mb-3" id="procurementInfo" style="display: none;">
                                 <i class="bi bi-info-circle me-2"></i>
-                                Add procurement items if this activity includes any purchases. The system will automatically determine if it's a full or partial procurement based on the total.
+                                Add procurement items if this activity includes any purchases. The system will
+                                automatically determine if it's a full or partial procurement based on the total.
                             </div>
-                            <div class="alert alert-danger alert-sm mb-3" id="budgetExceededWarning" style="display: none;">
+                            <div class="alert alert-danger alert-sm mb-3" id="budgetExceededWarning"
+                                style="display: none;">
                                 <i class="bi bi-exclamation-circle me-2"></i>
                                 <strong>Warning:</strong> Total procurement amount exceeds the activity budget!
                             </div>
-                            
+
                             <!-- Procurement Items Container -->
                             <div id="procurementItemsContainer">
                                 <!-- Items will be added here dynamically -->
                             </div>
-                            
+
                             <!-- Procurement Summary -->
-                            <div class="d-flex justify-content-between align-items-center pt-3 border-top" id="procurementSummary" style="display: none !important;">
+                            <div class="d-flex justify-content-between align-items-center pt-3 border-top"
+                                id="procurementSummary" style="display: none !important;">
                                 <div>
                                     <strong>Total Procurement:</strong>
                                     <span id="procurementTotal" class="text-primary fs-5">0.00</span>
                                 </div>
                                 <div id="procurementStatus" class="badge"></div>
                             </div>
-                            
+
                             <!-- Hidden field to store JSON data -->
                             <input type="hidden" name="procurement_breakdowns" id="procurementBreakdownsData" value="">
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-                        <a href="{% if form.instance.pk %}{% url 'activity_detail' form.instance.pk %}{% else %}{% url 'activities_list' %}{% endif %}" class="btn btn-outline-secondary">
+                        <a href="{% if form.instance.pk %}{% url 'activity_detail' form.instance.pk %}{% else %}{% url 'activities_list' %}{% endif %}"
+                            class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle me-1"></i>Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">
@@ -239,173 +256,185 @@
 {{ procurement_type_options|json_script:"procurement-types-data" }}
 {{ existing_procurement_breakdowns|json_script:"existing-procurement-breakdowns-data" }}
 <script>
-$(document).ready(function() {
-    let procurementItems = [];
-    let itemCounter = 0;
-    const officerOptions = JSON.parse(document.getElementById('officer-options-data').textContent || '[]');
-    
-    // Procurement types from database
-    const procurementTypes = JSON.parse(document.getElementById('procurement-types-data').textContent || '[]');
-    
-    // Load existing procurement breakdowns if editing
-    const existingProcurementBreakdowns = JSON.parse(
-        document.getElementById('existing-procurement-breakdowns-data').textContent || '[]'
-    );
-    if (Array.isArray(existingProcurementBreakdowns) && existingProcurementBreakdowns.length > 0) {
-        procurementItems = existingProcurementBreakdowns;
-        procurementItems.forEach((item, index) => {
-            item.id = index;
-            itemCounter = index + 1;
-        });
-        renderProcurementItems();
-        updateProcurementSummary();
-    }
-    
-    // Check if budget is entered and enable/disable procurement section
-    function checkBudgetAndEnableProcurement() {
-        const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
-        
-        if (totalBudget > 0) {
-            $('#addProcurementBtn').prop('disabled', false);
-            $('#budgetWarning').hide();
-            $('#procurementInfo').show();
-        } else {
-            $('#addProcurementBtn').prop('disabled', true);
-            $('#budgetWarning').show();
-            $('#procurementInfo').hide();
-        }
-    }
+    $(document).ready(function () {
+        let procurementItems = [];
+        let itemCounter = 0;
+        const officerOptions = JSON.parse(document.getElementById('officer-options-data').textContent || '[]');
 
-    function validateDisbursedVsBudget(showAlert = false) {
-        const totalBudgetRaw = $('#id_total_budget').val();
-        const disbursedRaw = $('#id_disbursed_amount').val();
-        const totalBudget = parseFloat(totalBudgetRaw);
-        const disbursedAmount = parseFloat(disbursedRaw);
-        const disbursedInput = $('#id_disbursed_amount');
-        const disbursedLimitError = $('#disbursedLimitError');
+        // Procurement types from database
+        const procurementTypes = JSON.parse(document.getElementById('procurement-types-data').textContent || '[]');
 
-        if (!Number.isNaN(totalBudget) && totalBudget >= 0) {
-            disbursedInput.attr('max', totalBudget);
-        } else {
-            disbursedInput.removeAttr('max');
-        }
-
-        const exceeds = !Number.isNaN(totalBudget) && !Number.isNaN(disbursedAmount) && disbursedAmount > totalBudget;
-
-        if (exceeds) {
-            disbursedInput.addClass('is-invalid');
-            disbursedLimitError.removeClass('d-none').addClass('d-block');
-            if (showAlert) {
-                alert('Error: Disbursed amount cannot exceed total budget.');
-            }
-            return false;
-        }
-
-        disbursedInput.removeClass('is-invalid');
-        disbursedLimitError.removeClass('d-block').addClass('d-none');
-        return true;
-    }
-    
-    // Toggle recurrence fields
-    function toggleRecurrenceFields() {
-        if ($('#id_is_recurring').is(':checked')) {
-            $('#recurrenceFields').slideDown();
-        } else {
-            $('#recurrenceFields').slideUp();
-        }
-    }
-
-    function updateResponsibleOfficerOptions() {
-        const selectedClusterIds = $('input[name="clusters"]:checked').map(function() {
-            return parseInt($(this).val(), 10);
-        }).get();
-        const officerSelect = $('#id_responsible_officer');
-        const currentOfficer = officerSelect.val();
-        const defaultOption = officerSelect.find('option[value=""]').first().clone();
-
-        officerSelect.empty();
-        if (defaultOption.length) {
-            officerSelect.append(defaultOption);
-        } else {
-            officerSelect.append('<option value="">---------</option>');
-        }
-
-        if (!selectedClusterIds.length) {
-            officerSelect.prop('disabled', true);
-            return;
-        }
-
-        const filteredOfficers = officerOptions.filter(officer =>
-            officer.cluster_ids.some(clusterId => selectedClusterIds.includes(clusterId))
+        // Load existing procurement breakdowns if editing
+        const existingProcurementBreakdowns = JSON.parse(
+            document.getElementById('existing-procurement-breakdowns-data').textContent || '[]'
         );
+        if (Array.isArray(existingProcurementBreakdowns) && existingProcurementBreakdowns.length > 0) {
+            procurementItems = existingProcurementBreakdowns;
+            procurementItems.forEach((item, index) => {
+                item.id = index;
+                itemCounter = index + 1;
+            });
+            renderProcurementItems();
+            updateProcurementSummary();
+        }
 
-        filteredOfficers.forEach(officer => {
-            officerSelect.append(
-                $('<option></option>').attr('value', officer.id).text(officer.name)
+        // Check if budget is entered and enable/disable procurement section
+        function checkBudgetAndEnableProcurement() {
+            const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
+
+            if (totalBudget > 0) {
+                $('#addProcurementBtn').prop('disabled', false);
+                $('#budgetWarning').hide();
+                $('#procurementInfo').show();
+            } else {
+                $('#addProcurementBtn').prop('disabled', true);
+                $('#budgetWarning').show();
+                $('#procurementInfo').hide();
+            }
+        }
+
+        function validateDisbursedVsBudget(showAlert = false) {
+            const totalBudgetRaw = $('#id_total_budget').val();
+            const disbursedRaw = $('#id_disbursed_amount').val();
+            const totalBudget = parseFloat(totalBudgetRaw);
+            const disbursedAmount = parseFloat(disbursedRaw);
+            const disbursedInput = $('#id_disbursed_amount');
+            const disbursedLimitError = $('#disbursedLimitError');
+
+            if (!Number.isNaN(totalBudget) && totalBudget >= 0) {
+                disbursedInput.attr('max', totalBudget);
+            } else {
+                disbursedInput.removeAttr('max');
+            }
+
+            const exceeds = !Number.isNaN(totalBudget) && !Number.isNaN(disbursedAmount) && disbursedAmount > totalBudget;
+
+            if (exceeds) {
+                disbursedInput.addClass('is-invalid');
+                disbursedLimitError.removeClass('d-none').addClass('d-block');
+                if (showAlert) {
+                    alert('Error: Disbursed amount cannot exceed total budget.');
+                }
+                return false;
+            }
+
+            disbursedInput.removeClass('is-invalid');
+            disbursedLimitError.removeClass('d-block').addClass('d-none');
+            return true;
+        }
+
+        // Toggle recurrence fields
+        function toggleRecurrenceFields() {
+            if ($('#id_is_recurring').is(':checked')) {
+                $('#recurrenceFields').slideDown();
+            } else {
+                $('#recurrenceFields').slideUp();
+            }
+        }
+
+        function updateResponsibleOfficerOptions() {
+            const selectedClusterIds = $('input[name="clusters"]:checked').map(function () {
+                return parseInt($(this).val(), 10);
+            }).get();
+            const officerSelect = $('#id_responsible_officer');
+            const currentOfficer = officerSelect.val();
+            const defaultOption = officerSelect.find('option[value=""]').first().clone();
+
+            officerSelect.empty();
+            if (defaultOption.length) {
+                officerSelect.append(defaultOption);
+            } else {
+                officerSelect.append('<option value="">---------</option>');
+            }
+
+            if (!selectedClusterIds.length) {
+                officerSelect.prop('disabled', true);
+                return;
+            }
+
+            const filteredOfficers = officerOptions.filter(officer =>
+                officer.cluster_ids.some(clusterId => selectedClusterIds.includes(clusterId))
             );
+
+            filteredOfficers.forEach(officer => {
+                officerSelect.append(
+                    $('<option></option>').attr('value', officer.id).text(officer.name)
+                );
+            });
+
+            officerSelect.prop('disabled', false);
+
+            if (currentOfficer && filteredOfficers.some(officer => String(officer.id) === String(currentOfficer))) {
+                officerSelect.val(String(currentOfficer));
+            } else {
+                officerSelect.val('');
+            }
+        }
+
+        // Add procurement item
+        $('#addProcurementBtn').on('click', function () {
+            const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
+
+            if (totalBudget <= 0) {
+                alert('Please enter the Total Budget before adding procurement items.');
+                return;
+            }
+
+            const newItem = {
+                id: itemCounter++,
+                type: procurementTypes.length > 0 ? procurementTypes[0].code : 'equipment',
+                amount: '',
+                description: ''
+            };
+            procurementItems.push(newItem);
+            renderProcurementItems();
+            updateProcurementSummary();
         });
 
-        officerSelect.prop('disabled', false);
+        // Render procurement items
+        function renderProcurementItems() {
+            const container = $('#procurementItemsContainer');
+            container.empty();
 
-        if (currentOfficer && filteredOfficers.some(officer => String(officer.id) === String(currentOfficer))) {
-            officerSelect.val(String(currentOfficer));
-        } else {
-            officerSelect.val('');
-        }
-    }
-    
-    // Add procurement item
-    $('#addProcurementBtn').on('click', function() {
-        const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
-        
-        if (totalBudget <= 0) {
-            alert('Please enter the Total Budget before adding procurement items.');
-            return;
-        }
-        
-        const newItem = {
-            id: itemCounter++,
-            type: procurementTypes.length > 0 ? procurementTypes[0].code : 'equipment',
-            amount: '',
-            description: ''
-        };
-        procurementItems.push(newItem);
-        renderProcurementItems();
-        updateProcurementSummary();
-    });
-    
-    // Render procurement items
-    function renderProcurementItems() {
-        const container = $('#procurementItemsContainer');
-        container.empty();
-        
-        if (procurementItems.length === 0) {
-            container.html('<p class="text-muted text-center py-3">No procurement items added yet. Click "+ Add Item" to begin.</p>');
-            $('#procurementSummary').hide();
-            return;
-        }
-        
-        procurementItems.forEach((item, index) => {
-            const itemHtml = `
+            if (procurementItems.length === 0) {
+                container.html('<p class="text-muted text-center py-3">No procurement items added yet. Click "+ Add Item" to begin.</p>');
+                $('#procurementSummary').hide();
+                return;
+            }
+
+            procurementItems.forEach((item, index) => {
+                const itemType = procurementTypes.find(pt => pt.code === item.type);
+                const threshold = itemType ? itemType.max_amount : null;
+                const suggestion = itemType ? itemType.exceeds_suggestion : null;
+                const amountExceedsThreshold = threshold && parseFloat(item.amount) > threshold;
+                const itemHtml = `
                 <div class="card mb-2 procurement-item" data-index="${index}" data-id="${item.id}">
                     <div class="card-body p-3">
                         <div class="row align-items-end">
                             <div class="col-md-3">
                                 <label class="form-label small">Type</label>
                                 <select class="form-select form-select-sm item-type" data-index="${index}">
-                                    ${procurementTypes.map(pt => 
-                                        `<option value="${pt.code}" ${item.type === pt.code ? 'selected' : ''}>${pt.name}</option>`
-                                    ).join('')}
+                                    ${procurementTypes.map(pt =>
+                    `<option value="${pt.code}" ${item.type === pt.code ? 'selected' : ''}>${pt.name}</option>`
+                ).join('')}
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Amount</label>
-                                <input type="number" class="form-control form-control-sm item-amount" data-index="${index}" 
+                                <input type="number" class="form-control form-control-sm item-amount ${amountExceedsThreshold ? 'is-invalid' : ''}" data-index="${index}"
                                        value="${item.amount}" step="0.01" min="0" placeholder="0.00">
+                                <div class="invalid-feedback d-none item-neg-error">Amount must be non-negative.</div>
+                                <div class="${amountExceedsThreshold ? 'd-block' : 'd-none'} item-threshold-warning" style="font-size:0.8em;">
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        Amount exceeds ZMW ${threshold ? threshold.toLocaleString() : ''} limit for this type.
+                                        Consider using: <strong>${suggestion || ''}</strong>
+                                    </span>
+                                </div>
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label small">Description</label>
-                                <input type="text" class="form-control form-control-sm item-description" data-index="${index}" 
+                                <input type="text" class="form-control form-control-sm item-description" data-index="${index}"
                                        value="${item.description || ''}" placeholder="Brief description">
                             </div>
                             <div class="col-md-1">
@@ -417,113 +446,169 @@ $(document).ready(function() {
                     </div>
                 </div>
             `;
-            container.append(itemHtml);
-        });
-        
-        $('#procurementSummary').show();
-        
-        // Bind events
-        $('.item-type').on('change', function() {
-            const index = $(this).data('index');
-            procurementItems[index].type = $(this).val();
-            updateProcurementData();
-        });
-        
-        $('.item-amount').on('input', function() {
-            const index = $(this).data('index');
-            procurementItems[index].amount = parseFloat($(this).val()) || 0;
-            updateProcurementSummary();
-            updateProcurementData();
-        });
-        
-        $('.item-description').on('input', function() {
-            const index = $(this).data('index');
-            procurementItems[index].description = $(this).val();
-            updateProcurementData();
-        });
-        
-        $('.delete-item').on('click', function() {
-            const index = $(this).data('index');
-            procurementItems.splice(index, 1);
-            renderProcurementItems();
-            updateProcurementSummary();
-            updateProcurementData();
-        });
-    }
-    
-    // Update procurement summary
-    function updateProcurementSummary() {
-        const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-        $('#procurementTotal').text(total.toFixed(2));
-        
-        const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
-        const statusBadge = $('#procurementStatus');
-        const exceededWarning = $('#budgetExceededWarning');
-        
-        // Check if procurement exceeds budget
-        if (total > totalBudget && totalBudget > 0) {
-            exceededWarning.show();
-        } else {
-            exceededWarning.hide();
+                container.append(itemHtml);
+            });
+
+            $('#procurementSummary').show();
+
+            // Bind events
+            $('.item-type').on('change', function () {
+                const index = $(this).data('index');
+                procurementItems[index].type = $(this).val();
+                // Re-validate amount against new type's threshold
+                const amountInput = $(this).closest('.procurement-item').find('.item-amount');
+                validateItemThreshold(index, amountInput);
+                updateProcurementData();
+            });
+
+            $('.item-amount').on('input', function () {
+                const index = $(this).data('index');
+                const val = parseFloat($(this).val());
+                const negError = $(this).siblings('.item-neg-error');
+                if ($(this).val().trim().startsWith('-') || (!isNaN(val) && val < 0)) {
+                    $(this).addClass('is-invalid');
+                    negError.removeClass('d-none').addClass('d-block');
+                    procurementItems[index].amount = 0;
+                } else {
+                    negError.removeClass('d-block').addClass('d-none');
+                    procurementItems[index].amount = val || 0;
+                    validateItemThreshold(index, $(this));
+                }
+                updateProcurementSummary();
+                updateProcurementData();
+            });
+
+            $('.item-description').on('input', function () {
+                const index = $(this).data('index');
+                procurementItems[index].description = $(this).val();
+                updateProcurementData();
+            });
+
+            $('.delete-item').on('click', function () {
+                const index = $(this).data('index');
+                procurementItems.splice(index, 1);
+                renderProcurementItems();
+                updateProcurementSummary();
+                updateProcurementData();
+            });
         }
-        
-        if (total === 0) {
-            statusBadge.hide();
-        } else if (total >= totalBudget && totalBudget > 0) {
-            statusBadge.show().removeClass('bg-warning').addClass('bg-success')
-                .text('Full Procurement Activity');
-        } else {
-            statusBadge.show().removeClass('bg-success').addClass('bg-warning')
-                .text('Partial Procurement');
+
+        // Update procurement summary
+        function updateProcurementSummary() {
+            const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            $('#procurementTotal').text(total.toFixed(2));
+
+            const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
+            const statusBadge = $('#procurementStatus');
+            const exceededWarning = $('#budgetExceededWarning');
+
+            // Check if procurement exceeds budget
+            if (total > totalBudget && totalBudget > 0) {
+                exceededWarning.show();
+            } else {
+                exceededWarning.hide();
+            }
+
+            if (total === 0) {
+                statusBadge.hide();
+            } else if (total >= totalBudget && totalBudget > 0) {
+                statusBadge.show().removeClass('bg-warning').addClass('bg-success')
+                    .text('Full Procurement Activity');
+            } else {
+                statusBadge.show().removeClass('bg-success').addClass('bg-warning')
+                    .text('Partial Procurement');
+            }
         }
-    }
-    
-    // Update hidden field with JSON data
-    function updateProcurementData() {
-        const jsonData = JSON.stringify(procurementItems);
-        $('#procurementBreakdownsData').val(jsonData);
-    }
-    
-    // Update summary when total budget changes
-    $('#id_total_budget').on('input', function() {
+
+        // Update hidden field with JSON data
+        function updateProcurementData() {
+            const jsonData = JSON.stringify(procurementItems);
+            $('#procurementBreakdownsData').val(jsonData);
+        }
+
+        $('#id_total_budget').on('input', function () {
+            validateNonNegative($(this), $('#totalBudgetNegError'));
+            checkBudgetAndEnableProcurement();
+            updateProcurementSummary();
+            validateDisbursedVsBudget();
+        });
+
+        $('#id_disbursed_amount').on('input', function () {
+            validateNonNegative($(this), $('#disbursedNegError'));
+            validateDisbursedVsBudget();
+        });
+
+        // Real-time non-negative validation
+        function validateNonNegative(inputEl, errorEl) {
+            const val = parseFloat(inputEl.val());
+            if (inputEl.val() !== '' && (!isNaN(val) && val < 0 || inputEl.val().trim().startsWith('-'))) {
+                inputEl.addClass('is-invalid');
+                errorEl.removeClass('d-none').addClass('d-block');
+                return false;
+            }
+            // Only remove is-invalid if no other error is already shown for this input
+            if (!inputEl.siblings('.invalid-feedback.d-block').not(errorEl).length) {
+                inputEl.removeClass('is-invalid');
+            }
+            errorEl.removeClass('d-block').addClass('d-none');
+            return true;
+        }
+
+        // Validate procurement item amount against its type's threshold
+        function validateItemThreshold(index, amountInput) {
+            const typeCode = procurementItems[index].type;
+            const amount = parseFloat(amountInput.val()) || 0;
+            const typeObj = procurementTypes.find(pt => pt.code === typeCode);
+            const thresholdWarning = amountInput.siblings('.item-threshold-warning');
+
+            if (typeObj && typeObj.max_amount && amount > typeObj.max_amount) {
+                amountInput.addClass('is-invalid');
+                thresholdWarning
+                    .html(`<span class="badge bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    Amount exceeds ZMW ${typeObj.max_amount.toLocaleString()} limit for <strong>${typeObj.name}</strong>.
+                    Consider using: <strong>${typeObj.exceeds_suggestion}</strong>
+                </span>`)
+                    .removeClass('d-none').addClass('d-block');
+                return false;
+            }
+            // Clear threshold warning; only remove is-invalid if neg error also not showing
+            thresholdWarning.removeClass('d-block').addClass('d-none');
+            if (!amountInput.siblings('.item-neg-error.d-block').length) {
+                amountInput.removeClass('is-invalid');
+            }
+            return true;
+        }
+
+        // Initialize on page load
+        toggleRecurrenceFields();
         checkBudgetAndEnableProcurement();
-        updateProcurementSummary();
         validateDisbursedVsBudget();
-    });
+        updateResponsibleOfficerOptions();
 
-    $('#id_disbursed_amount').on('input', function() {
-        validateDisbursedVsBudget();
-    });
-    
-    // Initialize on page load
-    toggleRecurrenceFields();
-    checkBudgetAndEnableProcurement();
-    validateDisbursedVsBudget();
-    updateResponsibleOfficerOptions();
-    
-    // Bind events
-    $('#id_is_recurring').on('change', toggleRecurrenceFields);
-    $(document).on('change', 'input[name="clusters"]', updateResponsibleOfficerOptions);
-    
-    // Before form submit, validate and ensure procurement data is updated
-    $('form').on('submit', function(e) {
-        updateProcurementData();
+        // Bind events
+        $('#id_is_recurring').on('change', toggleRecurrenceFields);
+        $(document).on('change', 'input[name="clusters"]', updateResponsibleOfficerOptions);
 
-        if (!validateDisbursedVsBudget(true)) {
-            e.preventDefault();
-            return false;
-        }
-        
-        // Validate procurement doesn't exceed budget
-        const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-        const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
-        
-        if (total > totalBudget && totalBudget > 0) {
-            e.preventDefault();
-            alert('Error: Total procurement amount (' + total.toFixed(2) + ') exceeds the activity budget (' + totalBudget.toFixed(2) + '). Please adjust the procurement items or increase the total budget.');
-            return false;
-        }
+        // Before form submit, validate and ensure procurement data is updated
+        $('form').on('submit', function (e) {
+            updateProcurementData();
+
+            if (!validateDisbursedVsBudget(true)) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Validate procurement doesn't exceed budget
+            const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
+
+            if (total > totalBudget && totalBudget > 0) {
+                e.preventDefault();
+                alert('Error: Total procurement amount (' + total.toFixed(2) + ') exceeds the activity budget (' + totalBudget.toFixed(2) + '). Please adjust the procurement items or increase the total budget.');
+                return false;
+            }
+        });
     });
-});
 </script>
 {% endblock %}
