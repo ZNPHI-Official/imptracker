@@ -1,6 +1,8 @@
+from typing import Optional
 
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from masters.models import Funder, ActivityStatus, Currency, ProcurementType
 from accounts.models import Cluster
 from django.db import transaction, IntegrityError
@@ -194,6 +196,34 @@ class Activity(models.Model):
                 continue
         return max_seq + 1
 
+    @staticmethod
+    def _is_fully_implemented_status_name(name: Optional[str]) -> bool:
+        if not name:
+            return False
+        return 'fully implemented' in name.strip().lower()
+
+    def _apply_actual_completion_date_when_fully_implemented(self):
+        """Set actual_completion_date when status becomes Fully Implemented (matches seed name)."""
+        if not self.status_id:
+            return
+        try:
+            status_name = self.status.name
+        except Exception:
+            return
+        if not self._is_fully_implemented_status_name(status_name):
+            return
+        old_full = False
+        if self.pk:
+            prev = (
+                Activity.objects.filter(pk=self.pk)
+                .select_related('status')
+                .first()
+            )
+            if prev and prev.status:
+                old_full = self._is_fully_implemented_status_name(prev.status.name)
+        if not old_full:
+            self.actual_completion_date = timezone.localdate()
+
     def save(self, *args, **kwargs):
         # Ensure year is populated from planned_month
         if self.planned_month:
@@ -224,6 +254,7 @@ class Activity(models.Model):
                 try:
                     with transaction.atomic():
                         self.activity_id = f"Y{yy}-{seq:06d}"
+                        self._apply_actual_completion_date_when_fully_implemented()
                         super().save(*args, **kwargs)
                     return
                 except IntegrityError as e:
@@ -264,6 +295,7 @@ class Activity(models.Model):
             self.has_partial_procurement = False
             self.is_procurement = False
 
+        self._apply_actual_completion_date_when_fully_implemented()
         super().save(*args, **kwargs)
 
     def __str__(self): return self.activity_id

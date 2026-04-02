@@ -194,7 +194,14 @@ def activities_list(request):
         needs_distinct = True
 
     if status:
-        if status.isdigit():
+        # Special dashboard token: treat "implemented" as fully+partially implemented.
+        normalized_status = str(status).strip().lower()
+        if normalized_status in ['implemented', 'disbursed', 'fully_or_partially_implemented']:
+            qs = qs.filter(
+                Q(status__name__icontains='Fully Implemented') |
+                Q(status__name__icontains='Partially Implemented')
+            )
+        elif status.isdigit():
             qs = qs.filter(status__id=int(status))
         else:
             qs = qs.filter(status__name=status)
