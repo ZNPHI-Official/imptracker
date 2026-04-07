@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Funder, ActivityStatus, Currency, ProcurementType
+from .models import Funder, ActivityStatus, Currency, ProcurementType, ProcurementStatus
 
 
 @admin.register(Funder)
@@ -22,3 +22,7 @@ class ProcurementTypeAdmin(admin.ModelAdmin):
 	list_display = ('code', 'name', 'active', 'is_default')
 	list_filter = ('active', 'is_default')
 	search_fields = ('code', 'name')
+
+@admin.register(ProcurementStatus)
+class ProcurementStatusAdmin(admin.ModelAdmin):
+	list_display = ('name', 'is_default')

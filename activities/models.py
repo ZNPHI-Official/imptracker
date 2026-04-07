@@ -1,7 +1,7 @@
 
 from django.db import models
 from django.conf import settings
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import Funder, ActivityStatus, Currency, ProcurementType, ProcurementStatus
 from accounts.models import Cluster
 from django.db import transaction, IntegrityError
 import calendar
@@ -84,6 +84,13 @@ class Activity(models.Model):
     is_procurement = models.BooleanField(
         default=False,
         help_text="True if this entire activity is a procurement"
+    )
+    procurement_status = models.ForeignKey(
+        ProcurementStatus,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Status of the procurement process"
     )
     # Temporary field during migration - will be removed
     procurement_type_old = models.CharField(

@@ -309,6 +309,18 @@
                 </div>
                 {% endif %}
                 {% if activity.is_procurement or activity.has_partial_procurement %}
+                <div class="detail-group mb-3">
+                    <label class="detail-label">Procurement Status</label>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary" id="procurement-status-display">{{ activity.procurement_status.name|default:"Not specified" }}</span>
+                        {% if perms.activities.change_activity or user == activity.responsible_officer %}
+                        <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-bs-toggle="modal"
+                            data-bs-target="#procurementStatusModal" title="Edit procurement status">
+                            <i class="bi bi-pencil-square text-secondary"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
                 <div class="detail-group">
                     <label class="detail-label">Procurement</label>
                     <p class="detail-value mb-0">
@@ -421,6 +433,38 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-success" id="saveStatusBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Procurement Status Modal -->
+<div class="modal fade" id="procurementStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Procurement Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="procurementStatusForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="procurementStatusSelect" class="form-label">Procurement Status</label>
+                        <select class="form-select" id="procurementStatusSelect" name="procurement_status" required>
+                            <option value="">Select status...</option>
+                            {% for status in all_procurement_statuses %}
+                            <option value="{{ status.id }}" {% if activity.procurement_status and status.id == activity.procurement_status.id %}selected{% endif %}>
+                                {{ status.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveProcurementStatusBtn">Save Changes</button>
             </div>
         </div>
     </div>
@@ -596,6 +640,40 @@
                         setTimeout(() => location.reload(), 1000);
                     } else {
                         showAlert('danger', response.error || 'Failed to update status');
+                    }
+                },
+                error: function () {
+                    showAlert('danger', 'An error occurred. Please try again.');
+                }
+            });
+        });
+
+        // Update Procurement Status
+        $('#saveProcurementStatusBtn').click(function () {
+            const statusId = $('#procurementStatusSelect').val();
+            if (!statusId) {
+                alert('Please select a procurement status');
+                return;
+            }
+
+            const procModal = bootstrap.Modal.getInstance(document.getElementById('procurementStatusModal'));
+            procModal.hide();
+
+            $.ajax({
+                url: `/activities/${activityId}/update-field/`,
+                method: 'POST',
+                data: {
+                    field: 'procurement_status',
+                    value: statusId,
+                    csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#procurement-status-display').text(response.new_value || response.display_value || $('#procurementStatusSelect option:selected').text().trim());
+                        showAlert('success', 'Procurement status updated successfully');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('danger', response.error || 'Failed to update procurement status');
                     }
                 },
                 error: function () {

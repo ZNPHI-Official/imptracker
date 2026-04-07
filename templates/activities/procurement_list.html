@@ -115,6 +115,7 @@
                         <th>Type</th>
                         <th>Clusters</th>
                         <th>Status</th>
+                        <th>Proc Status</th>
                         <th>Total Budget</th>
                         <th>Procurement Amount</th>
                         <th>Disbursed</th>
@@ -146,6 +147,7 @@
                             {% endfor %}
                         </td>
                         <td><span class="badge bg-primary">{{ activity.status.name }}</span></td>
+                        <td><span class="badge bg-secondary">{{ activity.procurement_status.name|default:"-" }}</span></td>
                         <td class="fw-medium">{{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma }}</td>
                         <td class="fw-medium text-warning">{{ activity.currency.code|default:"ZMK" }} {{ activity.procurement_amount|floatformat:2|intcomma|default:"0.00" }}</td>
                         <td class="fw-medium text-success">{{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|floatformat:2|intcomma|default:"0.00" }}</td>
@@ -202,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         order: [[0, 'asc']],
         columnDefs: [
-            { orderable: false, targets: 9 }
+            { orderable: false, targets: 10 }
         ],
         language: {
             search: "_INPUT_",

@@ -8,7 +8,7 @@ from django.db.models import Q, Sum
 from .models import Activity, ActivityAttachment
 from .forms import ActivityForm, BulkActionForm, ActivityAttachmentForm
 from accounts.models import Cluster, User
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import Funder, ActivityStatus, Currency, ProcurementType, ProcurementStatus
 from audit.models import AuditLog
 import json
 from datetime import datetime, date
@@ -364,6 +364,7 @@ def activity_detail(request, pk):
         'audit_logs': audit_logs,
         'all_users': User.objects.filter(is_active=True, clusters__in=a.clusters.all()).distinct().order_by('first_name', 'last_name', 'username'),
         'all_statuses': ActivityStatus.objects.all().order_by('name'),
+        'all_procurement_statuses': ProcurementStatus.objects.all().order_by('name'),
         'users': User.objects.filter(is_active=True),
         'statuses': ActivityStatus.objects.all(),
         'clusters': Cluster.objects.all(),
@@ -448,6 +449,8 @@ def edit_activity(request, pk):
                     activity.procurement_type = value if value else None
                 elif field == 'procurement_amount':
                     activity.procurement_amount = float(value) if value else None
+                elif field == 'procurement_status':
+                    activity.procurement_status = ProcurementStatus.objects.get(id=int(value)) if value else None
                 # Recurrence fields (only allow editing if this is a template, not a generated instance)
                 elif field == 'is_recurring':
                     if activity.generated_from_recurrence:
@@ -942,6 +945,16 @@ def update_activity_field(request, pk):
             old_value = activity.notes
             activity.notes = value
             display_value = value or 'No notes provided'
+            
+        elif field == 'procurement_status':
+            old_value = activity.procurement_status.name if activity.procurement_status else 'Not specified'
+            if value:
+                status = get_object_or_404(ProcurementStatus, pk=value)
+                activity.procurement_status = status
+                display_value = status.name
+            else:
+                activity.procurement_status = None
+                display_value = 'Not specified'
             
         else:
             return JsonResponse({'success': False, 'error': 'Invalid field'})

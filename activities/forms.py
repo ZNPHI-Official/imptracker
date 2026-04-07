@@ -1,6 +1,6 @@
 from django import forms
 from .models import Activity, ActivityAttachment
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import Funder, ActivityStatus, Currency, ProcurementType, ProcurementStatus
 from accounts.models import Cluster, User
 from datetime import date
 
@@ -38,7 +38,7 @@ class ActivityForm(forms.ModelForm):
             # Recurrence fields
             'is_recurring', 'recurrence_pattern', 'recurrence_interval', 'recurrence_end_date',
             # Procurement fields
-            'is_procurement', 'procurement_type', 'procurement_amount',
+            'is_procurement', 'procurement_type', 'procurement_amount', 'procurement_status'
         ]
         widgets = {
             'name': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Activity name/description'}),
@@ -58,6 +58,7 @@ class ActivityForm(forms.ModelForm):
             'is_procurement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'procurement_type': forms.Select(attrs={'class': 'form-select'}),
             'procurement_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'placeholder': '0.00'}),
+            'procurement_status': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'name': 'Activity Name',
@@ -78,6 +79,7 @@ class ActivityForm(forms.ModelForm):
             'is_procurement': 'This is a procurement',
             'procurement_type': 'Procurement Type',
             'procurement_amount': 'Procurement Amount',
+            'procurement_status': 'Procurement Status',
         }
 
     def __init__(self, *args, **kwargs):
@@ -85,6 +87,7 @@ class ActivityForm(forms.ModelForm):
         self.fields['category'].initial = self.instance.category if self.instance and self.instance.pk else []
         # Filter to only show active procurement types
         self.fields['procurement_type'].queryset = ProcurementType.objects.filter(active=True)
+        self.fields['procurement_status'].queryset = ProcurementStatus.objects.all()
         self.fields['responsible_officer'].queryset = User.objects.filter(is_active=True).distinct().order_by('first_name', 'last_name', 'username')
         # Set default procurement type if one is marked as default
         if not self.instance.pk:  # Only for new activities

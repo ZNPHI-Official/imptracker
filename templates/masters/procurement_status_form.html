@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Status{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'settings' %}">Settings</a></li>
+<li class="breadcrumb-item"><a href="{% url 'masters:status_list' %}">Statuses</a></li>
+<li class="breadcrumb-item active" aria-current="page">{% if form.instance.pk %}Edit{% else %}Create{% endif %}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Status{% else %}Create Status{% endif %}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Status Name</label>
+                        <input type="text" name="name" id="name" 
+                               class="form-control" 
+                               value="{% if status %}{{ status.name }}{% endif %}" required>
+                        <div class="form-text">Name of the activity status (e.g., Not Started, In Progress, Completed)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="is_default" id="is_default" 
+                                   class="form-check-input" {% if status.is_default %}checked{% endif %}>
+                            <label class="form-check-label" for="is_default">Set as Default Status</label>
+                        </div>
+                        <div class="form-text">The default status will be automatically selected for new activities</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <a href="{% url 'masters:status_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle-fill me-1"></i> Save Status
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

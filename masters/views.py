@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q
-from .models import Funder, ActivityStatus, Currency, ProcurementType
+from .models import Funder, ActivityStatus, Currency, ProcurementType, ProcurementStatus
 from accounts.models import Cluster
 
 def is_data_manager(user):
@@ -161,6 +161,79 @@ def status_delete(request, pk):
         status.delete()
         messages.success(request, f'Status "{name}" deleted successfully.')
     return redirect('masters:status_list')
+
+# ============= PROCUREMENT STATUS VIEWS =============
+@login_required
+@user_passes_test(is_data_manager)
+def procurement_status_list(request):
+    """List all procurement statuses"""
+    query = request.GET.get('q', '')
+    statuses = ProcurementStatus.objects.all().order_by('name')
+    
+    if query:
+        statuses = statuses.filter(name__icontains=query)
+    
+    context = {'statuses': statuses, 'query': query}
+    return render(request, 'masters/procurement_status_list.html', context)
+
+@login_required
+@user_passes_test(is_data_manager)
+def procurement_status_create(request):
+    """Create a new procurement status"""
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        is_default = request.POST.get('is_default') == 'on'
+        
+        if not name:
+            messages.error(request, 'Name is required.')
+            return redirect('masters:procurement_status_create')
+        
+        # If setting as default, unset other defaults
+        if is_default:
+            ProcurementStatus.objects.filter(is_default=True).update(is_default=False)
+        
+        ProcurementStatus.objects.create(name=name, is_default=is_default)
+        messages.success(request, f'Procurement status "{name}" created successfully.')
+        return redirect('masters:procurement_status_list')
+    
+    return render(request, 'masters/procurement_status_form.html')
+
+@login_required
+@user_passes_test(is_data_manager)
+def procurement_status_edit(request, pk):
+    """Edit an existing procurement status"""
+    status = get_object_or_404(ProcurementStatus, pk=pk)
+    
+    if request.method == 'POST':
+        status.name = request.POST.get('name', '').strip()
+        is_default = request.POST.get('is_default') == 'on'
+        
+        if not status.name:
+            messages.error(request, 'Name is required.')
+            return redirect('masters:procurement_status_edit', pk=pk)
+        
+        # If setting as default, unset other defaults
+        if is_default and not status.is_default:
+            ProcurementStatus.objects.exclude(pk=pk).update(is_default=False)
+        
+        status.is_default = is_default
+        status.save()
+        messages.success(request, f'Procurement status "{status.name}" updated successfully.')
+        return redirect('masters:procurement_status_list')
+    
+    context = {'status': status, 'is_edit': True}
+    return render(request, 'masters/procurement_status_form.html', context)
+
+@login_required
+@user_passes_test(is_data_manager)
+def procurement_status_delete(request, pk):
+    """Delete a procurement status"""
+    if request.method == 'POST':
+        status = get_object_or_404(ProcurementStatus, pk=pk)
+        name = status.name
+        status.delete()
+        messages.success(request, f'Procurement status "{name}" deleted successfully.')
+    return redirect('masters:procurement_status_list')
 
 # ============= CURRENCY VIEWS =============
 @login_required

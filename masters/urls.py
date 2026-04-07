@@ -16,6 +16,12 @@ urlpatterns = [
     path('statuses/<int:pk>/edit/', views.status_edit, name='status_edit'),
     path('statuses/<int:pk>/delete/', views.status_delete, name='status_delete'),
     
+    # Procurement Status Management
+    path('procurement-statuses/', views.procurement_status_list, name='procurement_status_list'),
+    path('procurement-statuses/create/', views.procurement_status_create, name='procurement_status_create'),
+    path('procurement-statuses/<int:pk>/edit/', views.procurement_status_edit, name='procurement_status_edit'),
+    path('procurement-statuses/<int:pk>/delete/', views.procurement_status_delete, name='procurement_status_delete'),
+    
     # Currency Management
     path('currencies/', views.currency_list, name='currency_list'),
     path('currencies/create/', views.currency_create, name='currency_create'),
