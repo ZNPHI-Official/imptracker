@@ -359,16 +359,43 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function statusColor(label) {
         var value = (label || '').toString().trim().toLowerCase();
-        var strictStatusColors = {
-            'cancelled': '#6b7280',
-            'fully implemented': '#10b981',
-            'in progress': '#3b82f6',
-            'not implemented': '#ef4444',
-            'partially implemented': '#f59e0b',
-            'planned': '#6b7280'
+        
+        // Define a coordinated professional palette
+        var palette = {
+            // Activity Statuses
+            'fully implemented': '#10b981',       // Green
+            'in progress': '#3b82f6',             // Blue
+            'partially implemented': '#f59e0b',   // Orange
+            'not implemented': '#ef4444',        // Red
+            'planned': '#64748b',                // Slate/Grey
+            'cancelled': '#94a3b8',              // Light Slate
+            'postponed': '#8b5cf6',              // Purple
+            
+            // Procurement Statuses (Added from new list)
+            'tendered': '#06b6d4',               // Cyan
+            'ordered': '#6366f1',                // Indigo
+            'delivered': '#14b8a6',              // Teal
+            'procurement completed and paid': '#059669', // Emerald/Deep Green
+            'not procured': '#f43f5e',           // Rose/Pink
+            'not specified': '#94a3b8',          // Grey
+            
+            // Quarters
+            'q1': '#3b82f6',
+            'q2': '#10b981',
+            'q3': '#f59e0b',
+            'q4': '#ef4444'
         };
 
-        return strictStatusColors[value] || '#6b7280';
+        return palette[value] || '#64748b';
+    }
+
+    function getPaletteArray(count) {
+        var baseColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#6366f1', '#14b8a6', '#f43f5e', '#d946ef'];
+        var colors = [];
+        for (var i = 0; i < count; i++) {
+            colors.push(baseColors[i % baseColors.length]);
+        }
+        return colors;
     }
     
     // 1. Activity Status Distribution - Donut Chart
@@ -541,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function() {
         },
         series: procurement_data.series,
         labels: procurement_data.labels,
-        colors: ['#10b981', '#f59e0b', '#6b7280'],
+        colors: (procurement_data.labels || []).map(statusColor),
         legend: {
             position: 'bottom',
             fontSize: '14px'
@@ -674,7 +701,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         },
-        colors: ['#06b6d4'],
+        colors: getPaletteArray(funding_distribution_data.labels.length),
         dataLabels: {
             enabled: true,
             offsetX: 30,
@@ -732,7 +759,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         },
-        colors: ['#8b5cf6'],
+        colors: (quarterly_data.labels || []).map(statusColor),
         dataLabels: {
             enabled: true,
             offsetY: -20,

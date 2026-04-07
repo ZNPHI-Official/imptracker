@@ -123,9 +123,21 @@ def dashboard(request):
     ).filter(planned_month__year__isnull=False).order_by('planned_month__year', 'planned_month__month'))
     
     # Procurement statistics
-    procurement_full = qs.filter(is_procurement=True).count()
-    procurement_partial = qs.filter(has_partial_procurement=True).count()
-    procurement_none = qs.filter(is_procurement=False, has_partial_procurement=False).count()
+    procurement_qs = qs.filter(Q(is_procurement=True) | Q(has_partial_procurement=True))
+    by_proc_status = list(procurement_qs.values('procurement_status__name').annotate(total=Count('id')))
+    
+    procurement_labels = []
+    procurement_series = []
+    
+    for item in by_proc_status:
+        label = item.get('procurement_status__name') or 'Not Specified'
+        procurement_labels.append(label)
+        procurement_series.append(item.get('total'))
+    
+    # If no data, provide an empty state structure
+    if not procurement_labels:
+        procurement_labels = ['No Procurements Planned']
+        procurement_series = [0]
     
     # Count implemented activities (Fully Implemented or Partially Implemented)
     implemented_count = qs.filter(
@@ -399,8 +411,8 @@ def dashboard(request):
             'total_disbursed': total_disbursed
         }),
         'procurement_data': json.dumps({
-            'labels': ['Full Procurement', 'Partial Procurement', 'No Procurement'],
-            'series': [procurement_full, procurement_partial, procurement_none]
+            'labels': procurement_labels,
+            'series': procurement_series
         }),
         'burn_rate_data': json.dumps({
             'labels': month_labels,
