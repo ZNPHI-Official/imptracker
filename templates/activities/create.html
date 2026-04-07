@@ -515,7 +515,7 @@
                 statusBadge.show().removeClass('bg-warning').addClass('bg-success')
                     .text('Full Procurement Activity, Simplified Bidding');
             } else if (total >= totalBudget && totalBudget > 0 && total > 1000000.00) {
-                statusBadge.show().removeClass('bg-success').addClass('bg-info')
+                statusBadge.show().removeClass('bg-warning').addClass('bg-success')
                     .text('Full Procurement Activity, National Open Bidding');
             } else if (total <= totalBudget && totalBudget > 0 && total > 1000000.00) {
                 statusBadge.show().removeClass('bg-success').addClass('bg-warning')

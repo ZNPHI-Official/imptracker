@@ -146,8 +146,7 @@
                         </button>
                         {% endif %}
                     </label>
-                    <p class="detail-value mb-0" id="notes-display">{{ activity.notes|linebreaksbr|default:"No notes
-                        provided" }}</p>
+                    <p class="detail-value mb-0" id="notes-display">{{ activity.notes|linebreaksbr|default:"No notes provided" }}</p>
                 </div>
             </div>
         </div>
@@ -166,10 +165,8 @@
                     {% for attachment in activity.attachments.all %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <a href="{{ attachment.file.url }}" target="_blank">{{
-                                attachment.file.name|cut:"activity_attachments/" }}</a>
-                            <small class="d-block text-muted">Uploaded on {{ attachment.uploaded_at|date:"d M Y"
-                                }}</small>
+                            <a href="{{ attachment.file.url }}" target="_blank">{{ attachment.file.name|cut:"activity_attachments/" }}</a>
+                            <small class="d-block text-muted">Uploaded on {{ attachment.uploaded_at|date:"d M Y" }}</small>
                         </div>
                         <form method="post" action="{% url 'delete_attachment' attachment.pk %}">
                             {% csrf_token %}
@@ -201,8 +198,7 @@
                             <div class="flex-shrink-0">
                                 <div class="timeline-icon bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
                                     style="width: 32px; height: 32px;">
-                                    <i
-                                        class="bi bi-{% if 'Created' in log.action %}plus{% elif 'Updated' in log.action %}pencil{% elif 'Deleted' in log.action %}trash{% else %}circle{% endif %} small"></i>
+                                    <i class="bi bi-{% if 'Created' in log.action %}plus{% elif 'Updated' in log.action %}pencil{% elif 'Deleted' in log.action %}trash{% else %}circle{% endif %} small"></i>
                                 </div>
                             </div>
                             <div class="flex-grow-1 ms-3">
@@ -211,8 +207,7 @@
                                         <h6 class="mb-1">{{ log.action }}</h6>
                                         <p class="text-muted small mb-1">{{ log.change_description }}</p>
                                         <small class="text-muted">
-                                            <i class="bi bi-person me-1"></i>{{
-                                            log.user.get_full_name|default:log.user.username }}
+                                            <i class="bi bi-person me-1"></i>{{ log.user.get_full_name|default:log.user.username }}
                                             <i class="bi bi-clock ms-2 me-1"></i>{{ log.timestamp|date:"d M Y, H:i" }}
                                         </small>
                                     </div>
@@ -239,25 +234,16 @@
             <div class="card-body">
                 <div class="detail-group mb-3">
                     <label class="detail-label">Total Budget</label>
-                    <p class="detail-value mb-0 fs-5">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.total_budget|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0 fs-5">{{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma|default:"0" }}</p>
                 </div>
                 <div class="detail-group {% if activity.procurement_breakdowns %}mb-3{% endif %}">
                     <label class="detail-label">Disbursed Amount</label>
-                    <p class="detail-value mb-0">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.disbursed_amount|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0">{{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|floatformat:2|intcomma|default:"0" }}</p>
                 </div>
                 {% if activity.procurement_breakdowns %}
                 <div class="detail-group">
                     <label class="detail-label">Procurement Total</label>
-                    <p class="detail-value mb-0 text-primary">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.procurement_amount|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0 text-primary">{{ activity.currency.code|default:"ZMK" }} {{ activity.procurement_amount|floatformat:2|intcomma|default:"0" }}</p>
                     <a href="{% url 'procurement_detail' activity.pk %}" class="btn btn-sm btn-warning mt-2">
                         <i class="bi bi-eye me-1"></i>View Details
                     </a>
@@ -318,8 +304,7 @@
                     <label class="detail-label">Recurrence</label>
                     <p class="detail-value mb-0">
                         <span class="badge bg-info">Recurring Activity</span><br>
-                        <small>{{ activity.get_recurrence_pattern_display }} (Every {{ activity.recurrence_interval }}
-                            period(s))</small>
+                        <small>{{ activity.get_recurrence_pattern_display }} (Every {{ activity.recurrence_interval }} period(s))</small>
                     </p>
                 </div>
                 {% endif %}
@@ -421,7 +406,7 @@
                         <select class="form-select" id="statusSelect" name="status" required>
                             <option value="">Select status...</option>
                             {% for status in all_statuses %}
-                            <option value="{{ status.id }}" {% if status.id==activity.status.id %}selected{% endif %}>
+                            <option value="{{ status.id }}" {% if status.id == activity.status.id %}selected{% endif %}>
                                 {{ status.name }}
                             </option>
                             {% endfor %}
@@ -457,8 +442,7 @@
                         <select class="form-select" id="officerSelect" name="responsible_officer">
                             <option value="">Not assigned</option>
                             {% for user in all_users %}
-                            <option value="{{ user.id }}" {% if activity.responsible_officer and
-                                user.id==activity.responsible_officer.id %}selected{% endif %}>
+                            <option value="{{ user.id }}" {% if activity.responsible_officer and user.id == activity.responsible_officer.id %}selected{% endif %}>
                                 {% if user.get_full_name %}
                                 {{ user.get_full_name }} ({{ user.username }})
                                 {% else %}
@@ -495,8 +479,7 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="notesTextarea" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notesTextarea" name="notes"
-                            rows="6">{{ activity.notes }}</textarea>
+                        <textarea class="form-control" id="notesTextarea" name="notes" rows="6">{{ activity.notes }}</textarea>
                         <small class="text-muted">Add any relevant notes or comments about this activity.</small>
                     </div>
                 </form>
@@ -517,217 +500,203 @@
 
 <script>
     $(document).ready(function () {
-        const activityId = {{ activity.pk }
-    };
+        const activityId = {{ activity.pk }};
 
-    // Initialize Select2 for officer selection
-    $('#officerSelect').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Search for a user...',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $('#officerModal')
-    });
+        // Initialize Select2 for officer selection
+        $('#officerSelect').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Search for a user...',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#officerModal')
+        });
 
-    // Handle modal events for officer selection
-    $('#officerModal').on('shown.bs.modal', function () {
-        // Small delay to ensure modal is fully rendered
-        setTimeout(function () {
-            $('#officerSelect').select2('open');
-        }, 100);
-    });
+        // Handle modal events for officer selection
+        $('#officerModal').on('shown.bs.modal', function () {
+            setTimeout(function () {
+                $('#officerSelect').select2('open');
+            }, 100);
+        });
 
-    $('#officerModal').on('hidden.bs.modal', function () {
-        $('#officerSelect').select2('close');
-    });
+        $('#officerModal').on('hidden.bs.modal', function () {
+            $('#officerSelect').select2('close');
+        });
 
-    // Handle attachment upload
-    $('#attachmentForm').submit(function (e) {
-        e.preventDefault();
+        // Handle attachment upload
+        $('#attachmentForm').submit(function (e) {
+            e.preventDefault();
 
-        const formData = new FormData(this);
-        const submitBtn = $(this).find('button[type="submit"]');
-        const originalText = submitBtn.text();
+            const formData = new FormData(this);
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalText = submitBtn.text();
 
-        // Disable button and show loading
-        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Uploading...');
+            submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Uploading...');
 
-        $.ajax({
-            url: `/activities/${activityId}/attachments/upload/`,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-                if (response.success) {
-                    // Close modal
-                    const attachmentModal = bootstrap.Modal.getInstance(document.getElementById('attachmentModal'));
-                    attachmentModal.hide();
-
-                    // Show success message and reload
-                    showAlert('success', response.message || 'Document uploaded successfully');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    // Show error messages
-                    let errorMsg = 'Upload failed: ';
-                    if (response.errors) {
-                        errorMsg += Object.values(response.errors).join(', ');
+            $.ajax({
+                url: `/activities/${activityId}/attachments/upload/`,
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    if (response.success) {
+                        const attachmentModal = bootstrap.Modal.getInstance(document.getElementById('attachmentModal'));
+                        attachmentModal.hide();
+                        showAlert('success', response.message || 'Document uploaded successfully');
+                        setTimeout(() => location.reload(), 1000);
                     } else {
-                        errorMsg += response.error || 'Unknown error';
+                        let errorMsg = 'Upload failed: ';
+                        if (response.errors) {
+                            errorMsg += Object.values(response.errors).join(', ');
+                        } else {
+                            errorMsg += response.error || 'Unknown error';
+                        }
+                        showAlert('danger', errorMsg);
+                        submitBtn.prop('disabled', false).text(originalText);
+                    }
+                },
+                error: function (xhr) {
+                    let errorMsg = 'An error occurred during upload';
+                    if (xhr.responseJSON) {
+                        if (xhr.responseJSON.errors) {
+                            errorMsg = Object.values(xhr.responseJSON.errors).join(', ');
+                        } else if (xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
                     }
                     showAlert('danger', errorMsg);
                     submitBtn.prop('disabled', false).text(originalText);
                 }
-            },
-            error: function (xhr) {
-                let errorMsg = 'An error occurred during upload';
-                if (xhr.responseJSON) {
-                    if (xhr.responseJSON.errors) {
-                        errorMsg = Object.values(xhr.responseJSON.errors).join(', ');
-                    } else if (xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
+            });
+        });
+
+        // Update Status
+        $('#saveStatusBtn').click(function () {
+            const statusId = $('#statusSelect').val();
+            if (!statusId) {
+                alert('Please select a status');
+                return;
+            }
+
+            const statusModal = bootstrap.Modal.getInstance(document.getElementById('statusModal'));
+            statusModal.hide();
+
+            $.ajax({
+                url: `/activities/${activityId}/update-field/`,
+                method: 'POST',
+                data: {
+                    field: 'status',
+                    value: statusId,
+                    csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#status-display').text(response.display_value);
+                        showAlert('success', 'Status updated successfully');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('danger', response.error || 'Failed to update status');
                     }
+                },
+                error: function () {
+                    showAlert('danger', 'An error occurred. Please try again.');
                 }
-                showAlert('danger', errorMsg);
-                submitBtn.prop('disabled', false).text(originalText);
-            }
+            });
         });
-    });
 
-    // Update Status
-    $('#saveStatusBtn').click(function () {
-        const statusId = $('#statusSelect').val();
-        if (!statusId) {
-            alert('Please select a status');
-            return;
-        }
+        // Update Responsible Officer
+        $('#saveOfficerBtn').click(function () {
+            const officerId = $('#officerSelect').val();
 
-        // Close modal immediately
-        const statusModal = bootstrap.Modal.getInstance(document.getElementById('statusModal'));
-        statusModal.hide();
+            const officerModal = bootstrap.Modal.getInstance(document.getElementById('officerModal'));
+            officerModal.hide();
 
-        $.ajax({
-            url: `/activities/${activityId}/update-field/`,
-            method: 'POST',
-            data: {
-                field: 'status',
-                value: statusId,
-                csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
-            },
-            success: function (response) {
-                if (response.success) {
-                    $('#status-display').text(response.display_value);
-                    showAlert('success', 'Status updated successfully');
-                    // Reload to update audit trail
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('danger', response.error || 'Failed to update status');
+            $.ajax({
+                url: `/activities/${activityId}/update-field/`,
+                method: 'POST',
+                data: {
+                    field: 'responsible_officer',
+                    value: officerId,
+                    csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#officer-display').text(response.display_value || 'Not assigned');
+                        showAlert('success', 'Responsible officer updated successfully');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('danger', response.error || 'Failed to update responsible officer');
+                    }
+                },
+                error: function () {
+                    showAlert('danger', 'An error occurred. Please try again.');
                 }
-            },
-            error: function () {
-                showAlert('danger', 'An error occurred. Please try again.');
-            }
+            });
         });
-    });
 
-    // Update Responsible Officer
-    $('#saveOfficerBtn').click(function () {
-        const officerId = $('#officerSelect').val();
+        // Update Notes
+        $('#saveNotesBtn').click(function () {
+            const notes = $('#notesTextarea').val();
 
-        // Close modal immediately
-        const officerModal = bootstrap.Modal.getInstance(document.getElementById('officerModal'));
-        officerModal.hide();
+            const notesModal = bootstrap.Modal.getInstance(document.getElementById('notesModal'));
+            notesModal.hide();
 
-        $.ajax({
-            url: `/activities/${activityId}/update-field/`,
-            method: 'POST',
-            data: {
-                field: 'responsible_officer',
-                value: officerId,
-                csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
-            },
-            success: function (response) {
-                if (response.success) {
-                    $('#officer-display').text(response.display_value || 'Not assigned');
-                    showAlert('success', 'Responsible officer updated successfully');
-                    // Reload to update audit trail
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('danger', response.error || 'Failed to update responsible officer');
+            $.ajax({
+                url: `/activities/${activityId}/update-field/`,
+                method: 'POST',
+                data: {
+                    field: 'notes',
+                    value: notes,
+                    csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        const displayText = notes || 'No notes provided';
+                        $('#notes-display').html(displayText.replace(/\n/g, '<br>'));
+                        showAlert('success', 'Notes updated successfully');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('danger', response.error || 'Failed to update notes');
+                    }
+                },
+                error: function () {
+                    showAlert('danger', 'An error occurred. Please try again.');
                 }
-            },
-            error: function () {
-                showAlert('danger', 'An error occurred. Please try again.');
-            }
+            });
         });
-    });
 
-    // Update Notes
-    $('#saveNotesBtn').click(function () {
-        const notes = $('#notesTextarea').val();
-
-        // Close modal immediately
-        const notesModal = bootstrap.Modal.getInstance(document.getElementById('notesModal'));
-        notesModal.hide();
-
-        $.ajax({
-            url: `/activities/${activityId}/update-field/`,
-            method: 'POST',
-            data: {
-                field: 'notes',
-                value: notes,
-                csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
-            },
-            success: function (response) {
-                if (response.success) {
-                    const displayText = notes || 'No notes provided';
-                    $('#notes-display').html(displayText.replace(/\n/g, '<br>'));
-                    showAlert('success', 'Notes updated successfully');
-                    // Reload to update audit trail
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showAlert('danger', response.error || 'Failed to update notes');
-                }
-            },
-            error: function () {
-                showAlert('danger', 'An error occurred. Please try again.');
+        // Helper function to show toast notifications
+        function showAlert(type, message) {
+            let container = document.getElementById('dynamicToastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'dynamicToastContainer';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = 2000;
+                document.body.appendChild(container);
             }
-        });
-    });
 
-    // Helper function to show toast notifications (success/info/warning/danger)
-    function showAlert(type, message) {
-        // Ensure toast container exists
-        let container = document.getElementById('dynamicToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'dynamicToastContainer';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = 2000;
-            document.body.appendChild(container);
-        }
-
-        const toastId = 'toast-' + Date.now();
-        const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle');
-        const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="bi bi-${icon} me-2"></i>${message}
+            const toastId = 'toast-' + Date.now();
+            const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle');
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-${icon} me-2"></i>${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>`;
+                </div>`;
 
-        container.insertAdjacentHTML('beforeend', toastHtml);
-        const toastEl = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastEl);
-        toast.show();
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            const toastEl = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
 
-        toastEl.addEventListener('hidden.bs.toast', function () {
-            toastEl.remove();
-        });
-    }
-});
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.remove();
+            });
+        }
+    });
 </script>
 {% endblock %}
