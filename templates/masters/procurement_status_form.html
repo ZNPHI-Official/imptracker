@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Status{% endblock %}
+{% block title %}{% if status %}Edit{% else %}Create{% endif %} Procurement Status{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'settings' %}">Settings</a></li>
-<li class="breadcrumb-item"><a href="{% url 'masters:status_list' %}">Statuses</a></li>
-<li class="breadcrumb-item active" aria-current="page">{% if form.instance.pk %}Edit{% else %}Create{% endif %}</li>
+<li class="breadcrumb-item"><a href="{% url 'masters:procurement_status_list' %}">Procurement Statuses</a></li>
+<li class="breadcrumb-item active" aria-current="page">{% if status %}Edit{% else %}Create{% endif %}</li>
 {% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
     <div class="col-lg-8 col-md-10">
         <div class="card">
             <div class="card-header">
-                <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Status{% else %}Create Status{% endif %}</h4>
+                <h4 class="card-title mb-0">{% if status %}Edit Procurement Status{% else %}Create Procurement Status{% endif %}</h4>
             </div>
             <div class="card-body">
                 <form method="post" novalidate>
@@ -29,11 +29,11 @@
                     {% endif %}
 
                     <div class="mb-3">
-                        <label for="name" class="form-label">Status Name</label>
+                        <label for="name" class="form-label">Procurement Status Name</label>
                         <input type="text" name="name" id="name" 
                                class="form-control" 
                                value="{% if status %}{{ status.name }}{% endif %}" required>
-                        <div class="form-text">Name of the activity status (e.g., Not Started, In Progress, Completed)</div>
+                        <div class="form-text">Name of the procurement status (e.g., Tendered, Ordered, Delivered)</div>
                     </div>
 
                     <div class="mb-3">
@@ -46,9 +46,9 @@
                     </div>
 
                     <div class="d-flex justify-content-end">
-                        <a href="{% url 'masters:status_list' %}" class="btn btn-secondary me-2">Cancel</a>
+                        <a href="{% url 'masters:procurement_status_list' %}" class="btn btn-secondary me-2">Cancel</a>
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle-fill me-1"></i> Save Status
+                            <i class="bi bi-check-circle-fill me-1"></i> Save Procurement Status
                         </button>
                     </div>
                 </form>

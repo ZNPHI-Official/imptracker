@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Status Management{% endblock %}
+{% block title %}Procurement Status Management{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'settings' %}">Settings</a></li>
-<li class="breadcrumb-item active" aria-current="page">Statuses</li>
+<li class="breadcrumb-item active" aria-current="page">Procurement Statuses</li>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Status Management</h1>
-    <a href="{% url 'masters:status_create' %}" class="btn btn-success">
-        <i class="bi bi-plus-lg me-1"></i> Add Status
+    <h1 class="h3 mb-0">Procurement Status Management</h1>
+    <a href="{% url 'masters:procurement_status_create' %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i> Add Procurement Status
     </a>
 </div>
 
 <div class="card">
     <div class="card-header">
-        <h5 class="card-title mb-0">All Statuses</h5>
+        <h5 class="card-title mb-0">All Procurement Statuses</h5>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -34,7 +34,7 @@
                     <tr>
                         <td>{{ status.name }}</td>
                         <td class="text-end">
-                            <a href="{% url 'masters:status_edit' status.pk %}" class="btn btn-sm btn-outline-primary">
+                            <a href="{% url 'masters:procurement_status_edit' status.pk %}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil-fill"></i> Edit
                             </a>
                             <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="{{ status.pk }}" data-name="{{ status.name }}">
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ],
         language: {
             search: "_INPUT_",
-            searchPlaceholder: "Search statuses..."
+            searchPlaceholder: "Search procurement statuses..."
         }
     });
 
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const deleteForm = deleteModal.querySelector('#deleteForm');
             
             modalBodyName.textContent = itemName;
-            deleteForm.action = `/masters/statuses/${itemId}/delete/`;
+            deleteForm.action = `/masters/procurement-statuses/${itemId}/delete/`;
         });
     }
 });

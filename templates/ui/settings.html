@@ -152,6 +152,28 @@
     </div>
   </div>
 
+  <!-- Procurement Statuses Card -->
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100 stats-card border-primary">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h5 class="card-title">
+              <i class="bi bi-truck me-2 text-primary"></i>Procurement Statuses
+            </h5>
+          </div>
+          <span class="badge bg-primary">{{ procurement_statuses_count }}</span>
+        </div>
+        <p class="text-muted mb-3">Manage procurement progress stages</p>
+        <div class="d-grid">
+          <a href="{% url 'masters:procurement_status_list' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-list me-1"></i>Manage Procurement Statuses
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Roles Card -->
    {% if request.user.is_staff or request.user.is_superuser %}
   <div class="col-md-6 col-lg-4">
