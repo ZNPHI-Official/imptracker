@@ -37,6 +37,18 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="color_code" class="form-label">Badge Color</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="color" name="color_code" id="color_code" 
+                                   class="form-control form-control-color" 
+                                   value="{% if status %}{{ status.color_code }}{% else %}#64748b{% endif %}" title="Choose a color">
+                            <input type="text" id="color_hex" class="form-control" style="max-width: 120px;" 
+                                   value="{% if status %}{{ status.color_code }}{% else %}#64748b{% endif %}" placeholder="#FFFFFF">
+                        </div>
+                        <div class="form-text">Choose a color for the status labels (badges)</div>
+                    </div>
+
+                    <div class="mb-3">
                         <div class="form-check form-switch">
                             <input type="checkbox" name="is_default" id="is_default" 
                                    class="form-check-input" {% if status.is_default %}checked{% endif %}>
@@ -44,6 +56,17 @@
                         </div>
                         <div class="form-text">The default status will be automatically selected for new activities</div>
                     </div>
+
+                    <script>
+                        document.getElementById('color_code').addEventListener('input', function() {
+                            document.getElementById('color_hex').value = this.value.toUpperCase();
+                        });
+                        document.getElementById('color_hex').addEventListener('input', function() {
+                            if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+                                document.getElementById('color_code').value = this.value;
+                            }
+                        });
+                    </script>
 
                     <div class="d-flex justify-content-end">
                         <a href="{% url 'masters:procurement_status_list' %}" class="btn btn-secondary me-2">Cancel</a>

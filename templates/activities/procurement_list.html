@@ -147,7 +147,11 @@
                             {% endfor %}
                         </td>
                         <td><span class="badge bg-primary">{{ activity.status.name }}</span></td>
-                        <td><span class="badge bg-secondary">{{ activity.procurement_status.name|default:"-" }}</span></td>
+                        <td>
+                            <span class="badge" style="background-color: {{ activity.procurement_status.color_code|default:'#64748b' }};">
+                                {{ activity.procurement_status.name|default:"-" }}
+                            </span>
+                        </td>
                         <td class="fw-medium">{{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma }}</td>
                         <td class="fw-medium text-warning">{{ activity.currency.code|default:"ZMK" }} {{ activity.procurement_amount|floatformat:2|intcomma|default:"0.00" }}</td>
                         <td class="fw-medium text-success">{{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|floatformat:2|intcomma|default:"0.00" }}</td>

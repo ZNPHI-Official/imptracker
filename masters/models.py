@@ -14,6 +14,7 @@ class ActivityStatus(models.Model):
 class ProcurementStatus(models.Model):
     name=models.CharField(max_length=100)
     is_default=models.BooleanField(default=False)
+    color_code=models.CharField(max_length=7, default='#64748b', help_text="Hex color code for tags (e.g. #3b82f6)")
     def __str__(self): return self.name
 
 

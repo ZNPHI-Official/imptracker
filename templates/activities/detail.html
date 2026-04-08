@@ -312,7 +312,7 @@
                 <div class="detail-group mb-3">
                     <label class="detail-label">Procurement Status</label>
                     <div class="d-flex align-items-center">
-                        <span class="badge bg-secondary" id="procurement-status-display">{{ activity.procurement_status.name|default:"Not specified" }}</span>
+                        <span class="badge" id="procurement-status-display" style="background-color: {{ activity.procurement_status.color_code|default:'#64748b' }};">{{ activity.procurement_status.name|default:"Not specified" }}</span>
                         {% if perms.activities.change_activity or user == activity.responsible_officer %}
                         <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-bs-toggle="modal"
                             data-bs-target="#procurementStatusModal" title="Edit procurement status">

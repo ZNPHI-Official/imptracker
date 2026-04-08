@@ -115,7 +115,7 @@
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <p class="stats-label text-info mb-1">Procurements</p>
-              <h2 class="stats-value">K{{ total_procurement_value|floatformat:2|default:0 }}</h2>
+              <h2 class="stats-value">K{{ total_procurement_value|intcomma|default:0 }}</h2>
               <small class="text-muted">for {{ procurement_activities_count|default:0 }} procurements.</small>
             </div>
             <div class="stats-icon text-info">

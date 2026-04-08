@@ -183,6 +183,7 @@ def procurement_status_create(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         is_default = request.POST.get('is_default') == 'on'
+        color_code = request.POST.get('color_code', '#64748b').strip()
         
         if not name:
             messages.error(request, 'Name is required.')
@@ -192,7 +193,7 @@ def procurement_status_create(request):
         if is_default:
             ProcurementStatus.objects.filter(is_default=True).update(is_default=False)
         
-        ProcurementStatus.objects.create(name=name, is_default=is_default)
+        ProcurementStatus.objects.create(name=name, is_default=is_default, color_code=color_code)
         messages.success(request, f'Procurement status "{name}" created successfully.')
         return redirect('masters:procurement_status_list')
     
@@ -207,6 +208,7 @@ def procurement_status_edit(request, pk):
     if request.method == 'POST':
         status.name = request.POST.get('name', '').strip()
         is_default = request.POST.get('is_default') == 'on'
+        status.color_code = request.POST.get('color_code', '#64748b').strip()
         
         if not status.name:
             messages.error(request, 'Name is required.')
