@@ -421,7 +421,7 @@
                         <select class="form-select" id="statusSelect" name="status" required>
                             <option value="">Select status...</option>
                             {% for status in all_statuses %}
-                            <option value="{{ status.id }}" {% if status.id==activity.status.id %}selected{% endif %}>
+                            <option value="{{ status.id }}" {% if status.id == activity.status.id %}selected{% endif %}>
                                 {{ status.name }}
                             </option>
                             {% endfor %}
@@ -457,8 +457,7 @@
                         <select class="form-select" id="officerSelect" name="responsible_officer">
                             <option value="">Not assigned</option>
                             {% for user in all_users %}
-                            <option value="{{ user.id }}" {% if activity.responsible_officer and
-                                user.id==activity.responsible_officer.id %}selected{% endif %}>
+                            <option value="{{ user.id }}" {% if activity.responsible_officer and user.id == activity.responsible_officer.id %}selected{% endif %}>
                                 {% if user.get_full_name %}
                                 {{ user.get_full_name }} ({{ user.username }})
                                 {% else %}

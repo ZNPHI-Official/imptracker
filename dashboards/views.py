@@ -110,13 +110,13 @@ def dashboard(request):
     total_activities = qs_distinct.count()
     by_year = list(qs_distinct.values('year').annotate(total=Count('id')).order_by('year'))
     by_status = list(qs_distinct.values('status__name').annotate(total=Count('id')).filter(status__name__isnull=False))
-    by_cluster = list(qs.values('clusters__short_name').annotate(
-        total=Count('id', distinct=True),
+    by_cluster = list(qs_distinct.values('clusters__short_name').annotate(
+        total=Count('id'),
         total_budget=Sum('total_budget'),
         total_disbursed=Sum('disbursed_amount')
     ).filter(clusters__short_name__isnull=False).order_by('clusters__short_name'))
-    by_funder = list(qs.values('funders__name').annotate(
-        total=Count('id', distinct=True),
+    by_funder = list(qs_distinct.values('funders__name').annotate(
+        total=Count('id'),
         total_budget=Sum('total_budget'),
         total_disbursed=Sum('disbursed_amount')
     ).filter(funders__name__isnull=False).order_by('funders__name'))

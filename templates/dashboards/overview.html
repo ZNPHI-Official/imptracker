@@ -157,10 +157,10 @@
     </div>
 </div>
 
+{% if show_cluster_chart %}
 <div class="row g-3 mb-4">
-    {% if show_cluster_chart %}
     <!-- Budget vs Disbursed by Cluster -->
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -168,15 +168,30 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div id="budget-disbursed-cluster-chart" style="min-height: 350px;"></div>
+                <div id="budget-disbursed-cluster-chart" style="min-height: 455px;"></div>
             </div>
         </div>
     </div>
-    {% else %}
-    {% endif %}
-    
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <!-- Monthly Burn Rate Trend -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                  <i class="bi bi-graph-up me-2"></i>Monthly Disbursement Trend (Burn Rate)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="burn-rate-chart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Procurement Activities -->
-    <div class="{% if show_cluster_chart %}col-lg-4{% else %}col-lg-6{% endif %}">
+    <div class="col-lg-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -189,40 +204,6 @@
         </div>
     </div>
 </div>
-
-<div class="row g-3 mb-4">
-    <!-- Monthly Burn Rate Trend -->
-    <div class="col-lg-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                  <i class="bi bi-graph-up me-2"></i>Monthly Disbursement Trend (Burn Rate)
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="burn-rate-chart" style="min-height: 350px;"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if show_cluster_chart %}
-<div class="row g-3 mb-4">
-    <!-- Burn Rate by Cluster -->
-    <div class="col-lg-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                  <i class="bi bi-fire me-2"></i>Budget Execution Rate by Cluster
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="burn-rate-by-cluster-chart" style="min-height: 350px;"></div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- Activity Type Distribution -->
 <div class="row g-3 mb-4">
@@ -540,11 +521,11 @@ document.addEventListener("DOMContentLoaded", function() {
     };
     new ApexCharts(document.querySelector("#budget-execution-chart"), budgetExecOptions).render();
 
-    // 3. Budget vs Disbursed by Cluster - Grouped Bar Chart
+    // 3. Budget vs Disbursed by Cluster - Mixed Bar + Line Chart
     var budgetDisbursedOptions = {
         chart: {
             type: 'bar',
-            height: 350,
+            height: 455,
             fontFamily: 'inherit',
             toolbar: {
                 show: true,
@@ -556,15 +537,23 @@ document.addEventListener("DOMContentLoaded", function() {
         series: [
             {
                 name: 'Total Budget',
+                type: 'bar',
                 data: budget_by_cluster_data.budget_series
             },
             {
                 name: 'Disbursed',
+                type: 'bar',
                 data: budget_by_cluster_data.disbursed_series
             },
             {
                 name: 'Remaining',
+                type: 'bar',
                 data: budget_by_cluster_data.remaining_series
+            },
+            {
+                name: 'Execution Rate (%)',
+                type: 'line',
+                data: burn_rate_by_cluster_data.rates
             }
         ],
         xaxis: {
@@ -575,13 +564,47 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         },
-        yaxis: {
-            labels: {
-                formatter: function (val) {
-                    return formatKwachaShort(val);
+        yaxis: [
+            {
+                seriesName: 'Total Budget',
+                labels: {
+                    formatter: function (val) {
+                        return formatKwachaShort(val);
+                    }
+                },
+                title: { text: 'Amount (K)' }
+            },
+            {
+                seriesName: 'Disbursed',
+                show: false,
+                labels: {
+                    formatter: function (val) {
+                        return formatKwachaShort(val);
+                    }
                 }
+            },
+            {
+                seriesName: 'Remaining',
+                show: false,
+                labels: {
+                    formatter: function (val) {
+                        return formatKwachaShort(val);
+                    }
+                }
+            },
+            {
+                seriesName: 'Execution Rate (%)',
+                opposite: true,
+                min: 0,
+                max: 100,
+                labels: {
+                    formatter: function (val) {
+                        return val.toFixed(0) + '%';
+                    }
+                },
+                title: { text: 'Execution Rate (%)' }
             }
-        },
+        ],
         plotOptions: {
             bar: {
                 horizontal: false,
@@ -592,7 +615,14 @@ document.addEventListener("DOMContentLoaded", function() {
         dataLabels: {
             enabled: false
         },
-        colors: ['#3b82f6', '#10b981', '#f59e0b'],
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+        stroke: {
+            width: [0, 0, 0, 3],
+            curve: 'smooth'
+        },
+        markers: {
+            size: [0, 0, 0, 5]
+        },
         legend: {
             position: 'top',
             fontSize: '14px'
@@ -600,11 +630,12 @@ document.addEventListener("DOMContentLoaded", function() {
         tooltip: {
             shared: true,
             intersect: false,
-            y: {
-                formatter: function (val) {
-                    return formatKwachaFull(val);
-                }
-            }
+            y: [
+                { formatter: function (val) { return formatKwachaFull(val); } },
+                { formatter: function (val) { return formatKwachaFull(val); } },
+                { formatter: function (val) { return formatKwachaFull(val); } },
+                { formatter: function (val) { return val != null ? val.toFixed(1) + '%' : '0%'; } }
+            ]
         },
         grid: {
             borderColor: '#e5e7eb',
@@ -726,80 +757,7 @@ document.addEventListener("DOMContentLoaded", function() {
     };
     new ApexCharts(document.querySelector("#burn-rate-chart"), burnRateOptions).render();
 
-    // 6. Burn Rate by Cluster - Column Chart
-    var burnRateByClusterOptions = {
-        chart: {
-            type: 'bar',
-            height: 350,
-            fontFamily: 'inherit',
-            toolbar: { show: false }
-        },
-        series: [{
-            name: 'Execution Rate',
-            data: burn_rate_by_cluster_data.rates
-        }],
-        xaxis: {
-            categories: burn_rate_by_cluster_data.labels,
-            labels: {
-                style: { fontSize: '12px' }
-            }
-        },
-        yaxis: {
-            min: 0,
-            max: 100,
-            labels: {
-                formatter: function(val) { return val.toFixed(0) + '%'; }
-            }
-        },
-        plotOptions: {
-            bar: {
-                borderRadius: 6,
-                columnWidth: '50%',
-                distributed: true,
-                dataLabels: { position: 'top' }
-            }
-        },
-        colors: burn_rate_by_cluster_data.rates.map(function(rate) {
-            if (rate >= 75) return '#10b981';
-            if (rate >= 50) return '#3b82f6';
-            if (rate >= 25) return '#f59e0b';
-            return '#ef4444';
-        }),
-        dataLabels: {
-            enabled: true,
-            offsetY: -20,
-            formatter: function(val) { return val.toFixed(1) + '%'; },
-            style: {
-                fontSize: '12px',
-                colors: ['#1e293b']
-            }
-        },
-        legend: { show: false },
-        tooltip: {
-            custom: function(opts) {
-                var i = opts.dataPointIndex;
-                var cluster = burn_rate_by_cluster_data.labels[i];
-                var rate = burn_rate_by_cluster_data.rates[i];
-                var budget = burn_rate_by_cluster_data.budget_series[i];
-                var disbursed = burn_rate_by_cluster_data.disbursed_series[i];
-                return '<div style="padding:10px;font-size:13px;">' +
-                    '<strong>' + cluster + '</strong><br>' +
-                    'Execution Rate: <strong>' + rate.toFixed(1) + '%</strong><br>' +
-                    'Budget: ' + formatKwachaFull(budget) + '<br>' +
-                    'Disbursed: ' + formatKwachaFull(disbursed) +
-                    '</div>';
-            }
-        },
-        grid: {
-            borderColor: '#e5e7eb',
-            strokeDashArray: 4
-        }
-    };
-    if (document.querySelector("#burn-rate-by-cluster-chart")) {
-        new ApexCharts(document.querySelector("#burn-rate-by-cluster-chart"), burnRateByClusterOptions).render();
-    }
-
-    // 7. Funding Distribution by Funder - Grouped Horizontal Bar Chart
+    // 6. Funding Distribution by Funder - Grouped Horizontal Bar Chart
     var fundingHeight = Math.round(Math.max(350, funding_distribution_data.labels.length * 70 + 80) * 0.75);
     var funderQuarterlyHeight = Math.round(fundingHeight * 0.75);
     var fundingOptions = {
