@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Construction Activities{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'activities_list' %}">Activities</a></li>
+<li class="breadcrumb-item active" aria-current="page">Construction</li>
+{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="page-title">
+                <i class="bi bi-building me-2"></i>Construction Activities
+            </h1>
+            <p class="page-subtitle text-muted mb-0">View and manage construction activities only</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'activities_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Activities
+            </a>
+            {% if can_create %}
+            <a href="{% url 'create_activity' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>New Activity
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-primary mb-1"><i class="bi bi-building fs-5"></i></div>
+                <div class="fw-bold text-primary">{{ total_activities }}</div>
+                <small class="text-muted">Constructions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-success mb-1"><i class="bi bi-cash-coin fs-5"></i></div>
+                <div class="fw-bold text-success">K{{ total_budget|intcomma }}</div>
+                <small class="text-muted">Total Budget</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-warning mb-1"><i class="bi bi-check-circle fs-5"></i></div>
+                <div class="fw-bold text-warning">K{{ total_disbursed|intcomma }}</div>
+                <small class="text-muted">Disbursed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-info h-100">
+            <div class="card-body p-2 text-center">
+                <div class="text-info mb-1"><i class="bi bi-flag fs-5"></i></div>
+                <div class="fw-bold text-info">{{ fully_implemented_count }}</div>
+                <small class="text-muted">Fully Implemented</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label mb-1">Search</label>
+                <input type="text" name="q" class="form-control" value="{{ filters.q|default:'' }}" placeholder="ID or name">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label mb-1">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    {% for s in statuses %}
+                        <option value="{{ s.id }}" {% if filters.status == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if show_funder_filter %}
+            <div class="col-12 col-md-3">
+                <label class="form-label mb-1">Funder</label>
+                <select name="funder" class="form-select">
+                    <option value="">All</option>
+                    {% for f in funders %}
+                        <option value="{{ f.id }}" {% if filters.funder == f.id|stringformat:"s" %}selected{% endif %}>{{ f.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            {% if show_cluster_filter %}
+            <div class="col-12 col-md-2">
+                <label class="form-label mb-1">Cluster</label>
+                <select name="cluster" class="form-select">
+                    <option value="">All</option>
+                    {% for c in clusters %}
+                        <option value="{{ c.id }}" {% if filters.cluster == c.id|stringformat:"s" %}selected{% endif %}>{{ c.short_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-6 col-md-1">
+                <label class="form-label mb-1">Quarter</label>
+                <select name="quarter" class="form-select">
+                    <option value="">All</option>
+                    <option value="1" {% if filters.quarter == "1" %}selected{% endif %}>Q1</option>
+                    <option value="2" {% if filters.quarter == "2" %}selected{% endif %}>Q2</option>
+                    <option value="3" {% if filters.quarter == "3" %}selected{% endif %}>Q3</option>
+                    <option value="4" {% if filters.quarter == "4" %}selected{% endif %}>Q4</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex gap-2 mt-2">
+                <button type="submit" class="btn btn-success"><i class="bi bi-funnel me-1"></i>Apply Filters</button>
+                <a href="{% url 'construction_list' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if activities %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="bi bi-table me-2"></i>Construction Activities</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="construction-table" class="table table-hover align-middle" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Quarter</th>
+                        <th>Budget</th>
+                        <th>Disbursed</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in activities %}
+                    <tr>
+                        <td><a href="{% url 'construction_detail' activity.pk %}" class="text-decoration-none fw-medium">{{ activity.activity_id }}</a></td>
+                        <td>{{ activity.name }}</td>
+                        <td><span class="badge bg-primary">{{ activity.status.name }}</span></td>
+                        <td>{% if activity.quarter %}<span class="badge bg-info">Q{{ activity.quarter }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="fw-medium">{{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma|default:"0" }}</td>
+                        <td class="fw-medium">{{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|floatformat:2|intcomma|default:"0" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'construction_detail' activity.pk %}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'activity_detail' activity.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-list-task"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-building-x display-6 text-muted"></i>
+        <h5 class="mt-2">No construction activities found</h5>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('#construction-table')) {
+        new DataTable('#construction-table', {
+            responsive: true,
+            pageLength: 25,
+            order: [[0, 'asc']]
+        });
+    }
+});
+</script>
+{% endblock %}

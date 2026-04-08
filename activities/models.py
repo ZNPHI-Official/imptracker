@@ -3,22 +3,34 @@ from typing import Optional
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import (
+    Funder,
+    ActivityStatus,
+    Currency,
+    ProcurementType,
+    ActivityCategory,
+    ActivitySubCategory,
+)
 from accounts.models import Cluster
 from django.db import transaction, IntegrityError
 import calendar
 from datetime import date
 
 class Activity(models.Model):
-    CATEGORY_CHOICES = [
-        ('prevention', 'Prevention'),
-        ('detection', 'Detection'),
-        ('response', 'Response'),
-    ]
-
     activity_id=models.CharField(max_length=15,unique=True)
     name=models.TextField()
-    category=models.JSONField(default=list, blank=True, help_text="Activity categories")
+    # Legacy category field kept for backward compatibility with older records.
+    category=models.JSONField(default=list, blank=True, help_text="Legacy activity categories")
+    categories = models.ManyToManyField(
+        ActivityCategory,
+        blank=True,
+        related_name='activities',
+    )
+    sub_categories = models.ManyToManyField(
+        ActivitySubCategory,
+        blank=True,
+        related_name='activities',
+    )
     year=models.IntegerField()
     # Activities may be co-funded and implemented by multiple clusters
     funders = models.ManyToManyField(Funder, blank=True, related_name='activities')
@@ -117,6 +129,15 @@ class Activity(models.Model):
         default=False,
         help_text="Auto-set to True if procurement_amount is set and < total_budget"
     )
+    is_construction = models.BooleanField(
+        default=False,
+        help_text="True if this activity is a construction activity",
+    )
+
+    in_procurement_plan = models.BooleanField(
+        default=False,
+        help_text="True if this activity is in the procurement plan",
+    )
     
     class Meta:
         ordering = ['-year', 'activity_id']
@@ -135,8 +156,15 @@ class Activity(models.Model):
         return tb - da
 
     def get_category_display_list(self):
-        choice_map = dict(self.CATEGORY_CHOICES)
-        return [choice_map.get(value, value) for value in (self.category or [])]
+        names = list(self.categories.values_list('name', flat=True))
+        if names:
+            return names
+        if isinstance(self.category, list):
+            return [str(value) for value in self.category]
+        return []
+
+    def get_sub_category_display_list(self):
+        return list(self.sub_categories.values_list('name', flat=True))
 
     def clean(self):
         # Validate numeric fields
@@ -164,11 +192,8 @@ class Activity(models.Model):
             if self.recurrence_interval is None or self.recurrence_interval < 1:
                 raise ValidationError({'recurrence_interval': 'Recurrence interval must be at least 1.'})
 
-        if self.category:
-            valid_categories = {value for value, _ in self.CATEGORY_CHOICES}
-            invalid_categories = [value for value in self.category if value not in valid_categories]
-            if invalid_categories:
-                raise ValidationError({'category': 'Invalid category selection.'})
+        if self.category and not isinstance(self.category, list):
+            raise ValidationError({'category': 'Legacy category data must be a list.'})
         
         # Cannot mark a generated instance as recurring
         if self.generated_from_recurrence and self.is_recurring:

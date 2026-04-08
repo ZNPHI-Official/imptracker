@@ -20,6 +20,9 @@
             <p class="page-subtitle text-muted mb-0">View and manage all implementation activities</p>
         </div>
         <div class="d-flex gap-2">
+            <a href="{% url 'construction_list' %}" class="btn btn-secondary">
+                <i class="bi bi-building me-1"></i>Construction
+            </a>
             <a href="{% url 'procurement_list' %}" class="btn btn-warning">
                 <i class="bi bi-shop me-1"></i>Procurements
             </a>
@@ -208,7 +211,7 @@
                         </td>
                         <td>{{ activity.name }}</td>
                         <td>
-                            {% if activity.category %}
+                            {% if activity.get_category_display_list %}
                                 {% for category_label in activity.get_category_display_list %}
                                     <span class="badge bg-info me-1">{{ category_label }}</span>
                                 {% endfor %}

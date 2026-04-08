@@ -74,17 +74,30 @@
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">
-                                Category
+                                Main Categories <span class="text-danger">*</span>
                             </label>
-                            {{ form.category }}
-                            {% if form.category.errors %}
-                                <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+                            {{ form.categories }}
+                            {% if form.categories.errors %}
+                                <div class="invalid-feedback d-block">{{ form.categories.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row" id="subCategorySection" style="display: none;">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                Sub Categories
+                            </label>
+                            {{ form.sub_categories }}
+                            <small class="text-muted">Only sub categories under selected main categories are available.</small>
+                            {% if form.sub_categories.errors %}
+                                <div class="invalid-feedback d-block">{{ form.sub_categories.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">
                                 Clusters <span class="text-danger">*</span>
                             </label>
@@ -93,13 +106,25 @@
                                 <div class="invalid-feedback d-block">{{ form.clusters.errors.0 }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">
                                 Funders <span class="text-danger">*</span>
                             </label>
                             {{ form.funders }}
                             {% if form.funders.errors %}
                                 <div class="invalid-feedback d-block">{{ form.funders.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                {{ form.is_construction }}
+                                <label class="form-check-label" for="{{ form.is_construction.id_for_label }}">
+                                    Is this a construction?
+                                </label>
+                            </div>
+                            <small class="text-muted">Leave unchecked unless this activity is a construction activity.</small>
+                            {% if form.is_construction.errors %}
+                                <div class="invalid-feedback d-block">{{ form.is_construction.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -147,7 +172,7 @@
                         {% if form.notes.errors %}
                             <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
                         {% endif %}
-                    </div>
+                    </div>                    
 
                     <!-- Recurrence Section -->
                     <div class="card mb-3">
@@ -199,11 +224,24 @@
                                 <i class="bi bi-exclamation-circle me-2"></i>
                                 <strong>Warning:</strong> Total procurement amount exceeds the activity budget!
                             </div>
-                            
                             <!-- Procurement Items Container -->
                             <div id="procurementItemsContainer">
                                 <!-- Items will be added here dynamically -->
                             </div>
+                            <div class="mb-3" id="procurementPlanQuestion" style="{% if form.instance.pk %}{% if form.instance.is_procurement or form.instance.has_partial_procurement or form.instance.in_procurement_plan %}display: block;{% else %}display: none;{% endif %}{% else %}display: none;{% endif %}">
+                                <div class="form-check">
+                                    {{ form.in_procurement_plan }}
+                                    <label class="form-check-label" for="{{ form.in_procurement_plan.id_for_label }}">
+                                        Is this in the procurement plan?
+                                    </label>
+                                </div>
+                                <small class="text-muted">Leave unchecked if the procurement is not in the procurement plan.</small>
+                                {% if form.in_procurement_plan.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.in_procurement_plan.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            
                             
                             <!-- Procurement Summary -->
                             <div class="d-flex justify-content-between align-items-center pt-3 border-top" id="procurementSummary" style="display: none !important;">
@@ -237,12 +275,14 @@
 {% block page_js %}
 {{ officer_options|json_script:"officer-options-data" }}
 {{ procurement_type_options|json_script:"procurement-types-data" }}
+{{ category_subcategory_map|json_script:"category-subcategory-map-data" }}
 {{ existing_procurement_breakdowns|json_script:"existing-procurement-breakdowns-data" }}
 <script>
 $(document).ready(function() {
     let procurementItems = [];
     let itemCounter = 0;
     const officerOptions = JSON.parse(document.getElementById('officer-options-data').textContent || '[]');
+    const categorySubCategoryMap = JSON.parse(document.getElementById('category-subcategory-map-data').textContent || '{}');
     
     // Procurement types from database
     const procurementTypes = JSON.parse(document.getElementById('procurement-types-data').textContent || '[]');
@@ -353,6 +393,43 @@ $(document).ready(function() {
             officerSelect.val('');
         }
     }
+
+    function getSelectedCategoryIds() {
+        return $('input[name="categories"]:checked').map(function() {
+            return String($(this).val());
+        }).get();
+    }
+
+    function updateSubCategoryOptions() {
+        const selectedCategoryIds = getSelectedCategoryIds();
+        const subCategorySection = $('#subCategorySection');
+        const subCategorySelect = $('#id_sub_categories');
+        const allowedSubCategoryIds = new Set();
+
+        selectedCategoryIds.forEach(categoryId => {
+            (categorySubCategoryMap[categoryId] || []).forEach(subCategoryId => {
+                allowedSubCategoryIds.add(String(subCategoryId));
+            });
+        });
+
+        let hasVisibleSubCategories = false;
+        subCategorySelect.find('option').each(function() {
+            const optionId = String($(this).val());
+            const isAllowed = allowedSubCategoryIds.has(optionId);
+            $(this).prop('disabled', !isAllowed).prop('hidden', !isAllowed);
+            if (!isAllowed) {
+                $(this).prop('selected', false);
+            } else {
+                hasVisibleSubCategories = true;
+            }
+        });
+
+        if (hasVisibleSubCategories) {
+            subCategorySection.slideDown();
+        } else {
+            subCategorySection.slideUp();
+        }
+    }
     
     // Add procurement item
     $('#addProcurementBtn').on('click', function() {
@@ -455,6 +532,7 @@ $(document).ready(function() {
     function updateProcurementSummary() {
         const total = procurementItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
         $('#procurementTotal').text(total.toFixed(2));
+        const procurementPlanQuestion = $('#procurementPlanQuestion');
         
         const totalBudget = parseFloat($('#id_total_budget').val()) || 0;
         const statusBadge = $('#procurementStatus');
@@ -469,12 +547,15 @@ $(document).ready(function() {
         
         if (total === 0) {
             statusBadge.hide();
+            procurementPlanQuestion.hide();
         } else if (total >= totalBudget && totalBudget > 0) {
             statusBadge.show().removeClass('bg-warning').addClass('bg-success')
                 .text('Full Procurement Activity');
+            procurementPlanQuestion.show();
         } else {
             statusBadge.show().removeClass('bg-success').addClass('bg-warning')
                 .text('Partial Procurement');
+            procurementPlanQuestion.show();
         }
     }
     
@@ -500,10 +581,12 @@ $(document).ready(function() {
     checkBudgetAndEnableProcurement();
     validateDisbursedVsBudget();
     updateResponsibleOfficerOptions();
+    updateSubCategoryOptions();
     
     // Bind events
     $('#id_is_recurring').on('change', toggleRecurrenceFields);
     $(document).on('change', 'input[name="clusters"]', updateResponsibleOfficerOptions);
+    $(document).on('change', 'input[name="categories"]', updateSubCategoryOptions);
     
     // Before form submit, validate and ensure procurement data is updated
     $('form').on('submit', function(e) {

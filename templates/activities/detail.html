@@ -283,16 +283,30 @@
             </div>
             <div class="card-body">
                 <div class="detail-group mb-3">
-                    <label class="detail-label">Category</label>
-                    <p class="detail-value mb-0">
-                        {% if activity.category %}
-                            {% for category_label in activity.get_category_display_list %}
-                                <span class="badge bg-info me-1">{{ category_label }}</span>
+                    <label class="detail-label">Categories</label>
+                    {% if activity.categories.all %}
+                        <div class="d-flex flex-column gap-2">
+                            {% for category in activity.categories.all %}
+                                <div class="border rounded p-2 bg-light">
+                                    <div class="mb-2">
+                                        <span class="badge bg-info">{{ category.name }}</span>
+                                    </div>
+                                    <div>
+                                        {% for sub_category in activity.sub_categories.all %}
+                                            {% if sub_category.category_id == category.id %}
+                                                <span class="badge bg-secondary me-1">{{ sub_category.name }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
                             {% endfor %}
-                        {% else %}
-                            Not specified
+                        </div>
+                        {% if not activity.sub_categories.all %}
+                            <small class="text-muted d-block mt-2">No sub categories selected.</small>
                         {% endif %}
-                    </p>
+                    {% else %}
+                        <p class="detail-value mb-0">Not specified</p>
+                    {% endif %}
                 </div>
                 <div class="detail-group mb-3">
                     <label class="detail-label">Quarter</label>
