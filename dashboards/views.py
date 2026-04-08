@@ -2,6 +2,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.db.models import Sum, Count, Q
+from datetime import datetime as dt
+from collections import Counter
 from activities.models import Activity
 from activities.views import get_user_role_category, apply_role_based_filters
 from audit.models import AuditLog
@@ -115,7 +117,8 @@ def dashboard(request):
     ).filter(clusters__short_name__isnull=False).order_by('clusters__short_name'))
     by_funder = list(qs.values('funders__name').annotate(
         total=Count('id', distinct=True),
-        total_budget=Sum('total_budget')
+        total_budget=Sum('total_budget'),
+        total_disbursed=Sum('disbursed_amount')
     ).filter(funders__name__isnull=False).order_by('funders__name'))
     by_quarter = list(qs_distinct.values('quarter').annotate(total=Count('id')).filter(quarter__isnull=False).order_by('quarter'))
     by_month = list(qs_distinct.values('planned_month__year', 'planned_month__month').annotate(
@@ -127,6 +130,50 @@ def dashboard(request):
     procurement_partial = qs.filter(has_partial_procurement=True).count()
     procurement_none = qs.filter(is_procurement=False, has_partial_procurement=False).count()
     
+    # Procurement stage analytics
+    proc_qs = qs_distinct.filter(Q(is_procurement=True) | Q(has_partial_procurement=True))
+    stage_tendering = proc_qs.filter(tendering_date__isnull=False).count()
+    stage_order     = proc_qs.filter(order_date__isnull=False).count()
+    stage_delivery  = proc_qs.filter(delivery_date__isnull=False).count()
+    stage_payment   = proc_qs.filter(payment_date__isnull=False).count()
+    total_proc_count = proc_qs.count()
+
+    def _to_ms(d):
+        """Convert a date to JavaScript timestamp (ms)."""
+        return int(dt(d.year, d.month, d.day).timestamp() * 1000) if d else None
+
+    # Build Gantt timeline: only activities with at least one stage date set
+    timeline_activities = proc_qs.filter(
+        Q(tendering_date__isnull=False) |
+        Q(order_date__isnull=False) |
+        Q(delivery_date__isnull=False) |
+        Q(payment_date__isnull=False)
+    ).order_by('planned_month')[:20]
+
+    gantt_tendering, gantt_order, gantt_delivery, gantt_payment = [], [], [], []
+    for act in timeline_activities:
+        label = act.activity_id
+        base = act.planned_month  # fallback start when prior stage date is absent
+
+        # Tendering: planned_month → tendering_date
+        if act.tendering_date:
+            gantt_tendering.append({'x': label, 'y': [_to_ms(base), _to_ms(act.tendering_date)]})
+
+        # Order: tendering_date (or base) → order_date
+        o_start = act.tendering_date or base
+        if act.order_date:
+            gantt_order.append({'x': label, 'y': [_to_ms(o_start), _to_ms(act.order_date)]})
+
+        # Delivery: order_date (or o_start) → delivery_date
+        d_start = act.order_date or o_start
+        if act.delivery_date:
+            gantt_delivery.append({'x': label, 'y': [_to_ms(d_start), _to_ms(act.delivery_date)]})
+
+        # Payment: delivery_date (or d_start) → payment_date
+        p_start = act.delivery_date or d_start
+        if act.payment_date:
+            gantt_payment.append({'x': label, 'y': [_to_ms(p_start), _to_ms(act.payment_date)]})
+
     # Count implemented activities (Fully Implemented or Partially Implemented)
     implemented_count = qs.filter(
         Q(status__name__icontains='Fully Implemented') | 
@@ -164,10 +211,19 @@ def dashboard(request):
     cluster_budgets = [float(item.get('total_budget') or 0) for item in by_cluster if item.get('clusters__short_name')]
     cluster_disbursed = [float(item.get('total_disbursed') or 0) for item in by_cluster if item.get('clusters__short_name')]
     cluster_remaining = [float((item.get('total_budget') or 0)) - float((item.get('total_disbursed') or 0)) for item in by_cluster if item.get('clusters__short_name')]
+    cluster_burn_rates = [
+        round(d / b * 100, 1) if b > 0 else 0
+        for b, d in zip(cluster_budgets, cluster_disbursed)
+    ]
 
     funder_labels = [item.get('funders__name') for item in by_funder if item.get('funders__name')]
     funder_counts = [item.get('total') for item in by_funder if item.get('funders__name')]
     funder_budgets = [float(item.get('total_budget') or 0) for item in by_funder if item.get('funders__name')]
+    funder_disbursed = [float(item.get('total_disbursed') or 0) for item in by_funder if item.get('funders__name')]
+    funder_exec_rates = [
+        round(d / b * 100, 1) if b > 0 else 0
+        for b, d in zip(funder_budgets, funder_disbursed)
+    ]
 
     quarter_labels = [f'Q{item.get("quarter")}' for item in by_quarter if item.get("quarter")]
     quarter_counts = [item.get('total') for item in by_quarter if item.get("quarter")]
@@ -202,6 +258,49 @@ def dashboard(request):
     # Determine chart visibility based on user role and data
     show_cluster_chart = total_clusters > 1 or role_category not in ['coordinator', 'manager']
     show_funder_chart = total_funders > 1 or role_category not in ['coordinator']
+
+    # ---- Activity category / type distribution ----
+    cat_display = dict(Activity.CATEGORY_CHOICES)  # code → display label
+
+    # Count activities and sum budget per leaf category (Python-side, JSON field)
+    cat_count  = Counter()
+    cat_budget = Counter()
+    cat_disbursed = Counter()
+    for row in qs_distinct.values('category', 'total_budget', 'disbursed_amount'):
+        for code in (row['category'] or []):
+            cat_count[code]    += 1
+            cat_budget[code]   += float(row['total_budget'] or 0)
+            cat_disbursed[code] += float(row['disbursed_amount'] or 0)
+
+    # Group colours (must align with JS stageColors below)
+    GROUP_COLORS = {
+        'Technical':             '#3b82f6',
+        'Capacity Building':     '#10b981',
+        'After Action Review':   '#f59e0b',
+        'Operational Costs':     '#ef4444',
+        'Systems Strengthening': '#8b5cf6',
+    }
+
+    # Top-level donut data (5 groups)
+    group_labels, group_counts, group_budgets, group_colors = [], [], [], []
+    for group_name, codes in Activity.CATEGORY_GROUPS:
+        g_count  = sum(cat_count[c]  for c in codes)
+        g_budget = sum(cat_budget[c] for c in codes)
+        group_labels.append(group_name)
+        group_counts.append(g_count)
+        group_budgets.append(g_budget)
+        group_colors.append(GROUP_COLORS[group_name])
+
+    # Subcategory breakdown (leaf nodes only, skip zeros)
+    subcat_labels, subcat_counts, subcat_budgets, subcat_disbursed_list, subcat_colors = [], [], [], [], []
+    for group_name, codes in Activity.CATEGORY_GROUPS:
+        for code in codes:
+            if cat_count[code] > 0 or True:   # always include so chart is populated once data exists
+                subcat_labels.append(cat_display.get(code, code))
+                subcat_counts.append(cat_count[code])
+                subcat_budgets.append(cat_budget[code])
+                subcat_disbursed_list.append(cat_disbursed[code])
+                subcat_colors.append(GROUP_COLORS[group_name])
 
     # PDF export of report
     if request.GET.get('export') == 'pdf':
@@ -389,6 +488,23 @@ def dashboard(request):
             'disbursed_series': cluster_disbursed,
             'remaining_series': cluster_remaining
         }),
+        'burn_rate_by_cluster_data': json.dumps({
+            'labels': cluster_labels,
+            'rates': cluster_burn_rates,
+            'budget_series': cluster_budgets,
+            'disbursed_series': cluster_disbursed,
+        }),
+        'procurement_stages_data': json.dumps({
+            'labels': ['Tendering', 'Order', 'Delivery', 'Payment'],
+            'counts': [stage_tendering, stage_order, stage_delivery, stage_payment],
+            'total': total_proc_count,
+        }),
+        'procurement_timeline_data': json.dumps({
+            'tendering': gantt_tendering,
+            'order': gantt_order,
+            'delivery': gantt_delivery,
+            'payment': gantt_payment,
+        }),
         'status_distribution_data': json.dumps({
             'labels': status_labels,
             'series': status_counts
@@ -409,11 +525,26 @@ def dashboard(request):
         }),
         'funding_distribution_data': json.dumps({
             'labels': funder_labels,
-            'series': funder_budgets
+            'budget_series': funder_budgets,
+            'disbursed_series': funder_disbursed,
+            'exec_rates': funder_exec_rates,
         }),
         'quarterly_data': json.dumps({
             'labels': quarter_labels,
             'series': quarter_counts
+        }),
+        'activity_type_group_data': json.dumps({
+            'labels': group_labels,
+            'counts': group_counts,
+            'budgets': group_budgets,
+            'colors': group_colors,
+        }),
+        'activity_type_subcat_data': json.dumps({
+            'labels': subcat_labels,
+            'counts': subcat_counts,
+            'budgets': subcat_budgets,
+            'disbursed': subcat_disbursed_list,
+            'colors': subcat_colors,
         }),
     }
     context.update({

@@ -206,6 +206,54 @@
     </div>
 </div>
 
+{% if show_cluster_chart %}
+<div class="row g-3 mb-4">
+    <!-- Burn Rate by Cluster -->
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                  <i class="bi bi-fire me-2"></i>Budget Execution Rate by Cluster
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="burn-rate-by-cluster-chart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Activity Type Distribution -->
+<div class="row g-3 mb-4">
+    <!-- Group-level donut -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-collection me-2"></i>Activity Type Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="activity-type-donut-chart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+    <!-- Subcategory breakdown -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart-steps me-2"></i>Activity Type Breakdown
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="activity-type-breakdown-chart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
     {% if show_funder_chart %}
     <!-- Funding Distribution by Funder -->
@@ -217,7 +265,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div id="funding-distribution-chart" style="min-height: 350px;"></div>
+                <div id="funding-distribution-chart"></div>
             </div>
         </div>
     </div>
@@ -232,7 +280,37 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div id="quarterly-distribution-chart" style="min-height: 350px;"></div>
+                <div id="quarterly-distribution-chart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Procurement Stage Charts -->
+<div class="row g-3 mb-4">
+    <!-- Stage Progress -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-funnel me-2"></i>Procurement Stage Progress
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="procurement-stages-chart" style="min-height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+    <!-- Gantt Timeline -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-diagram-3 me-2"></i>Procurement Stage Timeline
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="procurement-timeline-chart" style="min-height: 350px;"></div>
             </div>
         </div>
     </div>
@@ -307,12 +385,17 @@
 <script>
     var activities_by_cluster_data = {{ activities_by_cluster_data|safe }};
     var budget_by_cluster_data = {{ budget_by_cluster_data|safe }};
+    var burn_rate_by_cluster_data = {{ burn_rate_by_cluster_data|safe }};
     var status_distribution_data = {{ status_distribution_data|safe }};
     var budget_execution_data = {{ budget_execution_data|safe }};
     var procurement_data = {{ procurement_data|safe }};
     var burn_rate_data = {{ burn_rate_data|safe }};
     var funding_distribution_data = {{ funding_distribution_data|safe }};
     var quarterly_data = {{ quarterly_data|safe }};
+    var procurement_stages_data = {{ procurement_stages_data|safe }};
+    var procurement_timeline_data = {{ procurement_timeline_data|safe }};
+    var activity_type_group_data = {{ activity_type_group_data|safe }};
+    var activity_type_subcat_data = {{ activity_type_subcat_data|safe }};
 </script>
 {% endblock %}
 
@@ -643,69 +726,153 @@ document.addEventListener("DOMContentLoaded", function() {
     };
     new ApexCharts(document.querySelector("#burn-rate-chart"), burnRateOptions).render();
 
-    // 6. Funding Distribution by Funder - Horizontal Bar Chart
-    var fundingOptions = {
+    // 6. Burn Rate by Cluster - Column Chart
+    var burnRateByClusterOptions = {
         chart: {
             type: 'bar',
             height: 350,
             fontFamily: 'inherit',
-            toolbar: {
-                show: false
-            }
+            toolbar: { show: false }
         },
         series: [{
-            name: 'Total Budget',
-            data: funding_distribution_data.series
+            name: 'Execution Rate',
+            data: burn_rate_by_cluster_data.rates
         }],
+        xaxis: {
+            categories: burn_rate_by_cluster_data.labels,
+            labels: {
+                style: { fontSize: '12px' }
+            }
+        },
+        yaxis: {
+            min: 0,
+            max: 100,
+            labels: {
+                formatter: function(val) { return val.toFixed(0) + '%'; }
+            }
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 6,
+                columnWidth: '50%',
+                distributed: true,
+                dataLabels: { position: 'top' }
+            }
+        },
+        colors: burn_rate_by_cluster_data.rates.map(function(rate) {
+            if (rate >= 75) return '#10b981';
+            if (rate >= 50) return '#3b82f6';
+            if (rate >= 25) return '#f59e0b';
+            return '#ef4444';
+        }),
+        dataLabels: {
+            enabled: true,
+            offsetY: -20,
+            formatter: function(val) { return val.toFixed(1) + '%'; },
+            style: {
+                fontSize: '12px',
+                colors: ['#1e293b']
+            }
+        },
+        legend: { show: false },
+        tooltip: {
+            custom: function(opts) {
+                var i = opts.dataPointIndex;
+                var cluster = burn_rate_by_cluster_data.labels[i];
+                var rate = burn_rate_by_cluster_data.rates[i];
+                var budget = burn_rate_by_cluster_data.budget_series[i];
+                var disbursed = burn_rate_by_cluster_data.disbursed_series[i];
+                return '<div style="padding:10px;font-size:13px;">' +
+                    '<strong>' + cluster + '</strong><br>' +
+                    'Execution Rate: <strong>' + rate.toFixed(1) + '%</strong><br>' +
+                    'Budget: ' + formatKwachaFull(budget) + '<br>' +
+                    'Disbursed: ' + formatKwachaFull(disbursed) +
+                    '</div>';
+            }
+        },
+        grid: {
+            borderColor: '#e5e7eb',
+            strokeDashArray: 4
+        }
+    };
+    if (document.querySelector("#burn-rate-by-cluster-chart")) {
+        new ApexCharts(document.querySelector("#burn-rate-by-cluster-chart"), burnRateByClusterOptions).render();
+    }
+
+    // 7. Funding Distribution by Funder - Grouped Horizontal Bar Chart
+    var fundingHeight = Math.round(Math.max(350, funding_distribution_data.labels.length * 70 + 80) * 0.75);
+    var funderQuarterlyHeight = Math.round(fundingHeight * 0.75);
+    var fundingOptions = {
+        chart: {
+            type: 'bar',
+            height: funderQuarterlyHeight,
+            fontFamily: 'inherit',
+            toolbar: { show: false }
+        },
+        series: [
+            { name: 'Budget',    data: funding_distribution_data.budget_series },
+            { name: 'Disbursed', data: funding_distribution_data.disbursed_series }
+        ],
         xaxis: {
             categories: funding_distribution_data.labels,
             labels: {
-                formatter: function (val) {
-                    return formatKwachaShort(val);
-                }
+                formatter: function (val) { return formatKwachaShort(val); },
+                style: { fontSize: '11px' }
             }
         },
         plotOptions: {
             bar: {
                 horizontal: true,
                 borderRadius: 4,
-                dataLabels: {
-                    position: 'top'
-                }
+                barHeight: '70%',
+                dataLabels: { position: 'top' }
             }
         },
-        colors: ['#06b6d4'],
+        colors: ['#06b6d4', '#10b981'],
         dataLabels: {
             enabled: true,
-            offsetX: 30,
-            formatter: function (val) {
-                return formatKwachaShort(val);
-            },
+            offsetX: 6,
+            formatter: function (val) { return formatKwachaShort(val); },
             style: {
-                fontSize: '12px',
+                fontSize: '11px',
                 colors: ['#1e293b']
             }
         },
+        legend: {
+            position: 'top',
+            fontSize: '13px'
+        },
         tooltip: {
-            y: {
-                formatter: function (val) {
-                    return formatKwachaFull(val);
-                }
+            shared: true,
+            intersect: false,
+            custom: function (opts) {
+                var i = opts.dataPointIndex;
+                var funder   = funding_distribution_data.labels[i];
+                var budget   = funding_distribution_data.budget_series[i];
+                var disbursed = funding_distribution_data.disbursed_series[i];
+                var rate     = funding_distribution_data.exec_rates[i];
+                return '<div style="padding:10px;font-size:13px;">' +
+                    '<strong>' + funder + '</strong><br>' +
+                    'Budget: ' + formatKwachaFull(budget) + '<br>' +
+                    'Disbursed: ' + formatKwachaFull(disbursed) + '<br>' +
+                    'Execution: <strong>' + rate.toFixed(1) + '%</strong>' +
+                    '</div>';
             }
         },
         grid: {
-            borderColor: '#e5e7eb'
+            borderColor: '#e5e7eb',
+            xaxis: { lines: { show: true } }
         }
     };
     if (document.querySelector("#funding-distribution-chart")) {
         new ApexCharts(document.querySelector("#funding-distribution-chart"), fundingOptions).render();
     }
 
-    // 7. Quarterly Distribution - Column Chart
+    // 8. Quarterly Distribution - Column Chart
     var quarterlyOptions = {
         chart: {
             type: 'bar',
-            height: 350,
+            height: funderQuarterlyHeight,
             fontFamily: 'inherit',
             toolbar: {
                 show: false
@@ -761,6 +928,286 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
     new ApexCharts(document.querySelector("#quarterly-distribution-chart"), quarterlyOptions).render();
+
+    // 9. Activity Type Overview - Donut Chart (5 groups)
+    var actTypeDonutOptions = {
+        chart: {
+            type: 'donut',
+            height: 350,
+            fontFamily: 'inherit'
+        },
+        series: activity_type_group_data.counts,
+        labels: activity_type_group_data.labels,
+        colors: activity_type_group_data.colors,
+        legend: {
+            position: 'bottom',
+            fontSize: '13px'
+        },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '65%',
+                    labels: {
+                        show: true,
+                        total: {
+                            show: true,
+                            label: 'Total Tagged',
+                            fontSize: '13px',
+                            color: '#64748b',
+                            formatter: function(w) {
+                                return w.globals.seriesTotals.reduce(function(a, b) { return a + b; }, 0);
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: function(val) { return val.toFixed(0) + '%'; }
+        },
+        tooltip: {
+            y: {
+                formatter: function(val, opts) {
+                    var budget = activity_type_group_data.budgets[opts.seriesIndex];
+                    return val + ' activities — ' + formatKwachaFull(budget);
+                }
+            }
+        }
+    };
+    new ApexCharts(document.querySelector("#activity-type-donut-chart"), actTypeDonutOptions).render();
+
+    // 10. Activity Type Subcategory Breakdown - Horizontal Bar Chart
+    var subcatHeight = Math.max(350, activity_type_subcat_data.labels.length * 48 + 80);
+    var actTypeBreakdownOptions = {
+        chart: {
+            type: 'bar',
+            height: subcatHeight,
+            fontFamily: 'inherit',
+            toolbar: { show: false }
+        },
+        series: [
+            { name: 'Activities', data: activity_type_subcat_data.counts },
+            { name: 'Budget (K)', data: activity_type_subcat_data.budgets }
+        ],
+        xaxis: {
+            categories: activity_type_subcat_data.labels,
+            labels: { style: { fontSize: '12px' } }
+        },
+        yaxis: [
+            {
+                seriesName: 'Activities',
+                title: { text: 'Count', style: { fontSize: '11px' } },
+                labels: { formatter: function(v) { return Math.floor(v); } }
+            },
+            {
+                seriesName: 'Budget (K)',
+                opposite: true,
+                title: { text: 'Budget', style: { fontSize: '11px' } },
+                labels: { formatter: function(v) { return formatKwachaShort(v); } }
+            }
+        ],
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '60%',
+                dataLabels: { position: 'top' }
+            }
+        },
+        colors: ['#1e293b', '#94a3b8'],
+        dataLabels: {
+            enabled: true,
+            offsetX: 6,
+            formatter: function(val, opts) {
+                if (opts.seriesIndex === 0) return val;
+                return formatKwachaShort(val);
+            },
+            style: { fontSize: '11px', colors: ['#fff'] }
+        },
+        legend: { position: 'top', fontSize: '13px' },
+        tooltip: {
+            shared: true,
+            intersect: false,
+            custom: function(opts) {
+                var i = opts.dataPointIndex;
+                var label     = activity_type_subcat_data.labels[i];
+                var count     = activity_type_subcat_data.counts[i];
+                var budget    = activity_type_subcat_data.budgets[i];
+                var disbursed = activity_type_subcat_data.disbursed[i];
+                var execRate  = budget > 0 ? ((disbursed / budget) * 100).toFixed(1) : '0.0';
+                var color     = activity_type_subcat_data.colors[i];
+                return '<div style="padding:10px;font-size:13px;">' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' +
+                    '<strong>' + label + '</strong><br>' +
+                    'Activities: ' + count + '<br>' +
+                    'Budget: ' + formatKwachaFull(budget) + '<br>' +
+                    'Disbursed: ' + formatKwachaFull(disbursed) + '<br>' +
+                    'Execution: <strong>' + execRate + '%</strong>' +
+                    '</div>';
+            }
+        },
+        grid: {
+            borderColor: '#e5e7eb',
+            xaxis: { lines: { show: true } }
+        }
+    };
+    new ApexCharts(document.querySelector("#activity-type-breakdown-chart"), actTypeBreakdownOptions).render();
+
+    // 11. Procurement Stage Progress - Column Chart
+    var stageColors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
+    var procStagesOptions = {
+        chart: {
+            type: 'bar',
+            height: 350,
+            fontFamily: 'inherit',
+            toolbar: { show: false }
+        },
+        series: [{
+            name: 'Procurements',
+            data: procurement_stages_data.counts
+        }],
+        xaxis: {
+            categories: procurement_stages_data.labels,
+            labels: { style: { fontSize: '13px' } }
+        },
+        yaxis: {
+            labels: {
+                formatter: function(val) { return Math.floor(val); }
+            }
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 6,
+                columnWidth: '50%',
+                distributed: true,
+                dataLabels: { position: 'top' }
+            }
+        },
+        colors: stageColors,
+        dataLabels: {
+            enabled: true,
+            offsetY: -20,
+            formatter: function(val) {
+                var total = procurement_stages_data.total;
+                if (total > 0) {
+                    return val + ' (' + ((val / total) * 100).toFixed(0) + '%)';
+                }
+                return val;
+            },
+            style: {
+                fontSize: '12px',
+                colors: ['#1e293b']
+            }
+        },
+        legend: { show: false },
+        tooltip: {
+            y: {
+                formatter: function(val) {
+                    var total = procurement_stages_data.total;
+                    var pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
+                    return val + ' of ' + total + ' procurements (' + pct + ')';
+                }
+            }
+        },
+        grid: {
+            borderColor: '#e5e7eb',
+            strokeDashArray: 4
+        }
+    };
+    new ApexCharts(document.querySelector("#procurement-stages-chart"), procStagesOptions).render();
+
+    // 12. Procurement Stage Timeline - Gantt (RangeBar)
+    var hasTimelineData = (
+        procurement_timeline_data.tendering.length > 0 ||
+        procurement_timeline_data.order.length > 0 ||
+        procurement_timeline_data.delivery.length > 0 ||
+        procurement_timeline_data.payment.length > 0
+    );
+
+    if (document.querySelector("#procurement-timeline-chart")) {
+        if (!hasTimelineData) {
+            document.querySelector("#procurement-timeline-chart").innerHTML =
+                '<div class="d-flex flex-column align-items-center justify-content-center text-muted" style="height:350px;">' +
+                '<i class="bi bi-diagram-3 fs-1 mb-3"></i>' +
+                '<p class="mb-0">No stage dates recorded yet.</p>' +
+                '<small>Set Tendering, Order, Delivery or Payment dates on procurement activities.</small>' +
+                '</div>';
+        } else {
+            var allLabels = [];
+            ['tendering','order','delivery','payment'].forEach(function(stage) {
+                procurement_timeline_data[stage].forEach(function(d) {
+                    if (allLabels.indexOf(d.x) === -1) allLabels.push(d.x);
+                });
+            });
+            var ganttHeight = Math.max(350, allLabels.length * 44 + 100);
+
+            var timelineOptions = {
+                chart: {
+                    type: 'rangeBar',
+                    height: ganttHeight,
+                    fontFamily: 'inherit',
+                    toolbar: { show: true, tools: { download: true, zoom: false, reset: false, pan: false, zoomin: false, zoomout: false } }
+                },
+                series: [
+                    { name: 'Tendering', data: procurement_timeline_data.tendering },
+                    { name: 'Order',     data: procurement_timeline_data.order },
+                    { name: 'Delivery',  data: procurement_timeline_data.delivery },
+                    { name: 'Payment',   data: procurement_timeline_data.payment }
+                ],
+                colors: ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'],
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '60%',
+                        rangeBarGroupRows: true
+                    }
+                },
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        datetimeUTC: false,
+                        format: "MMM 'yy",
+                        style: { fontSize: '11px' }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: { fontSize: '11px' },
+                        maxWidth: 120
+                    }
+                },
+                dataLabels: { enabled: false },
+                legend: {
+                    position: 'top',
+                    fontSize: '13px'
+                },
+                tooltip: {
+                    custom: function(opts) {
+                        var s = opts.seriesIndex;
+                        var i = opts.dataPointIndex;
+                        var stageNames = ['Tendering', 'Order', 'Delivery', 'Payment'];
+                        var stageKeys  = ['tendering', 'order', 'delivery', 'payment'];
+                        var item = procurement_timeline_data[stageKeys[s]][i];
+                        if (!item) return '';
+                        var start = new Date(item.y[0]).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+                        var end   = new Date(item.y[1]).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+                        return '<div style="padding:10px;font-size:13px;">' +
+                            '<strong>' + item.x + '</strong><br>' +
+                            'Stage: <strong>' + stageNames[s] + '</strong><br>' +
+                            start + ' &rarr; ' + end +
+                            '</div>';
+                    }
+                },
+                grid: {
+                    borderColor: '#e5e7eb',
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: false } }
+                }
+            };
+            new ApexCharts(document.querySelector("#procurement-timeline-chart"), timelineOptions).render();
+        }
+    }
 });
 </script>
 {% endblock %}

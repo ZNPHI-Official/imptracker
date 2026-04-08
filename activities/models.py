@@ -9,9 +9,30 @@ from datetime import date
 
 class Activity(models.Model):
     CATEGORY_CHOICES = [
+        # Technical
+        ('preparedness', 'Preparedness'),
         ('prevention', 'Prevention'),
         ('detection', 'Detection'),
         ('response', 'Response'),
+        # Standalone types
+        ('capacity_building', 'Capacity Building'),
+        ('after_action_review', 'After Action Review'),
+        ('systems_strengthening', 'Systems Strengthening'),
+        # Operational Costs
+        ('operational_rent', 'Operational - Rent'),
+        ('operational_utilities', 'Operational - Utilities'),
+        ('operational_salaries', 'Operational - Salaries'),
+        ('operational_vehicle_service', 'Operational - Vehicle Service'),
+    ]
+
+    # Groups used for dashboard aggregation
+    CATEGORY_GROUPS = [
+        ('Technical',           ['preparedness', 'prevention', 'detection', 'response']),
+        ('Capacity Building',   ['capacity_building']),
+        ('After Action Review', ['after_action_review']),
+        ('Operational Costs',   ['operational_rent', 'operational_utilities',
+                                  'operational_salaries', 'operational_vehicle_service']),
+        ('Systems Strengthening', ['systems_strengthening']),
     ]
 
     activity_id=models.CharField(max_length=15,unique=True)
@@ -114,6 +135,24 @@ class Activity(models.Model):
     has_partial_procurement = models.BooleanField(
         default=False,
         help_text="Auto-set to True if procurement_amount is set and < total_budget"
+    )
+
+    # ---- Procurement stage milestone dates ----
+    tendering_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date when tendering was completed"
+    )
+    order_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date when the order was placed"
+    )
+    delivery_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date when delivery was completed"
+    )
+    payment_date = models.DateField(
+        null=True, blank=True,
+        help_text="Date when payment was made"
     )
     
     class Meta:
