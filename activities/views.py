@@ -8,7 +8,13 @@ from django.db.models import Q, Sum
 from .models import Activity, ActivityAttachment
 from .forms import ActivityForm, BulkActionForm, ActivityAttachmentForm
 from accounts.models import Cluster, User
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import (
+    Funder,
+    ActivityStatus,
+    Currency,
+    ProcurementType,
+    ActivitySubCategory,
+)
 from audit.models import AuditLog
 import json
 from datetime import datetime, date
@@ -78,6 +84,20 @@ def get_procurement_type_options():
         .order_by('name')
         .values('code', 'name')
     )
+
+
+def get_category_subcategory_map():
+    """Return active subcategory IDs grouped by active parent category for create/edit UI."""
+    mapping = {}
+    rows = (
+        ActivitySubCategory.objects.filter(active=True, category__active=True)
+        .select_related('category')
+        .values('id', 'category_id')
+    )
+    for row in rows:
+        key = str(row['category_id'])
+        mapping.setdefault(key, []).append(row['id'])
+    return mapping
 
 
 def safe_parse_json_list(raw_value):
@@ -194,7 +214,14 @@ def activities_list(request):
         needs_distinct = True
 
     if status:
-        if status.isdigit():
+        # Special dashboard token: treat "implemented" as fully+partially implemented.
+        normalized_status = str(status).strip().lower()
+        if normalized_status in ['implemented', 'disbursed', 'fully_or_partially_implemented']:
+            qs = qs.filter(
+                Q(status__name__icontains='Fully Implemented') |
+                Q(status__name__icontains='Partially Implemented')
+            )
+        elif status.isdigit():
             qs = qs.filter(status__id=int(status))
         else:
             qs = qs.filter(status__name=status)
@@ -384,6 +411,7 @@ def edit_activity(request, pk):
             'procurement_types': procurement_types,
             'officer_options': get_responsible_officer_options(),
             'procurement_type_options': get_procurement_type_options(),
+            'category_subcategory_map': get_category_subcategory_map(),
             'existing_procurement_breakdowns': activity.procurement_breakdowns or [],
         }
         return render(request, 'activities/create.html', context)
@@ -523,6 +551,7 @@ def edit_activity(request, pk):
                     'procurement_types': ProcurementType.objects.filter(active=True).order_by('name'),
                     'officer_options': get_responsible_officer_options(),
                     'procurement_type_options': get_procurement_type_options(),
+                    'category_subcategory_map': get_category_subcategory_map(),
                     'existing_procurement_breakdowns': (
                         safe_parse_json_list(request.POST.get('procurement_breakdowns'))
                         or (form.instance.procurement_breakdowns or [])
@@ -575,6 +604,7 @@ def create_activity(request):
         'procurement_types': procurement_types,
         'officer_options': get_responsible_officer_options(),
         'procurement_type_options': get_procurement_type_options(),
+        'category_subcategory_map': get_category_subcategory_map(),
         'existing_procurement_breakdowns': (
             safe_parse_json_list(request.POST.get('procurement_breakdowns'))
             if request.method == 'POST' else []
@@ -1020,6 +1050,17 @@ def procurement_list(request):
     if needs_distinct:
         qs = qs.distinct()
 
+    total_activities = qs.count()
+    totals = qs.aggregate(
+        total_budget=Sum('total_budget'),
+        total_disbursed=Sum('disbursed_amount'),
+        total_procurement=Sum('procurement_amount'),
+    )
+    total_budget = totals['total_budget'] or 0
+    total_disbursed = totals['total_disbursed'] or 0
+    total_procurement_value = totals['total_procurement'] or 0
+    procurement_activities_count = total_activities
+
     context = {
         'activities': qs,
         'clusters': Cluster.objects.all(),
@@ -1035,6 +1076,11 @@ def procurement_list(request):
         'user_role': role_category,
         'show_cluster_filter': show_cluster_filter,
         'show_funder_filter': show_funder_filter,
+        'total_activities': total_activities,
+        'total_budget': total_budget,
+        'total_disbursed': total_disbursed,
+        'total_procurement_value': total_procurement_value,
+        'procurement_activities_count': procurement_activities_count,
     }
     return render(request, 'activities/procurement_list.html', context)
 
@@ -1066,6 +1112,121 @@ def procurement_detail(request, pk):
         'amounts_match': amounts_match
     }
     return render(request, 'activities/procurement_detail.html', context)
+
+
+@login_required
+def construction_list(request):
+    """List construction activities only."""
+    if not can_view_activities(request.user):
+        return HttpResponseForbidden("You do not have permission to view activities")
+
+    qs = (
+        Activity.objects.filter(deleted=False, is_construction=True)
+        .select_related('status', 'currency', 'responsible_officer')
+        .prefetch_related('clusters', 'funders', 'categories', 'sub_categories')
+        .order_by('-year', 'activity_id')
+    )
+
+    role_category = get_user_role_category(request.user)
+    qs = apply_role_based_filters(qs, request.user)
+
+    show_cluster_filter = can_use_cluster_filter(request.user)
+    show_funder_filter = True
+
+    status = request.GET.get('status')
+    funder = request.GET.get('funder')
+    cluster = request.GET.get('cluster')
+    quarter = request.GET.get('quarter')
+    search_query = request.GET.get('q')
+
+    needs_distinct = False
+
+    if status:
+        if status.isdigit():
+            qs = qs.filter(status__id=int(status))
+        else:
+            qs = qs.filter(status__name=status)
+
+    if funder:
+        if funder.isdigit():
+            qs = qs.filter(funders__id=int(funder))
+        else:
+            qs = qs.filter(funders__code=funder)
+        needs_distinct = True
+
+    if cluster:
+        if cluster.isdigit():
+            qs = qs.filter(clusters__id=int(cluster))
+        else:
+            qs = qs.filter(clusters__short_name=cluster)
+        needs_distinct = True
+
+    if quarter:
+        try:
+            quarter_num = int(quarter)
+            if quarter_num in [1, 2, 3, 4]:
+                qs = qs.filter(quarter=quarter_num)
+        except ValueError:
+            pass
+
+    if search_query:
+        qs = qs.filter(Q(name__icontains=search_query) | Q(activity_id__icontains=search_query))
+
+    if needs_distinct:
+        qs = qs.distinct()
+
+    total_activities = qs.count()
+    totals = qs.aggregate(total_budget=Sum('total_budget'), total_disbursed=Sum('disbursed_amount'))
+    total_budget = totals['total_budget'] or 0
+    total_disbursed = totals['total_disbursed'] or 0
+    total_balance = total_budget - total_disbursed
+    fully_implemented_count = qs.filter(status__name__icontains='Fully Implemented').count()
+
+    context = {
+        'activities': qs,
+        'clusters': Cluster.objects.all(),
+        'funders': Funder.objects.all(),
+        'statuses': ActivityStatus.objects.all(),
+        'filters': {
+            'status': status,
+            'funder': funder,
+            'cluster': cluster,
+            'quarter': quarter,
+            'q': search_query,
+        },
+        'user_role': role_category,
+        'show_cluster_filter': show_cluster_filter,
+        'show_funder_filter': show_funder_filter,
+        'total_activities': total_activities,
+        'total_budget': total_budget,
+        'total_disbursed': total_disbursed,
+        'total_balance': total_balance,
+        'fully_implemented_count': fully_implemented_count,
+        'can_create': can_manage_activities(request.user),
+    }
+    return render(request, 'activities/construction_list.html', context)
+
+
+@login_required
+def construction_detail(request, pk):
+    """Detailed view of a construction activity."""
+    if not can_view_activities(request.user):
+        return HttpResponseForbidden("You do not have permission to view activities")
+
+    activity = get_object_or_404(
+        Activity.objects.select_related('status', 'currency', 'responsible_officer').prefetch_related(
+            'clusters', 'funders', 'categories', 'sub_categories'
+        ),
+        pk=pk,
+        deleted=False,
+        is_construction=True,
+    )
+
+    context = {
+        'activity': activity,
+        'can_edit': can_edit_activities(request.user),
+    }
+    return render(request, 'activities/construction_detail.html', context)
 
 
 @login_required
@@ -1296,7 +1457,8 @@ def export_activities_excel(request):
 
     row_num = 2
     for activity in qs:
-        category_str = ', '.join(activity.get_category_display_list()) if activity.category else ''
+        category_labels = activity.get_category_display_list()
+        category_str = ', '.join(category_labels) if category_labels else ''
         clusters_str = ', '.join([c.short_name for c in activity.clusters.all()])
         funders_str = ', '.join([f.name for f in activity.funders.all()])
         officer = ''

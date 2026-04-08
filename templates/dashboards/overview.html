@@ -66,7 +66,7 @@
 </div>
 <!-- Stats Cards -->
 <div class="stats-grid mb-4">
-    <div class="card stats-card border-primary">
+    <a href="{% url 'activities_list' %}{% if selected_quarter %}?quarter={{ selected_quarter }}{% endif %}" class="card stats-card border-primary text-decoration-none" style="cursor: pointer;">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -78,9 +78,9 @@
             </div>
           </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card stats-card border-success">
+    <a href="{% url 'activities_list' %}{% if selected_quarter %}?quarter={{ selected_quarter }}{% endif %}" class="card stats-card border-success text-decoration-none" style="cursor: pointer;">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -93,9 +93,9 @@
             </div>
           </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card stats-card border-warning">
+    <a href="{% url 'activities_list' %}{% if selected_quarter %}?quarter={{ selected_quarter }}&status=implemented{% else %}?status=implemented{% endif %}" class="card stats-card border-warning text-decoration-none" style="cursor: pointer;">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -108,9 +108,9 @@
             </div>
           </div>
         </div>
-    </div>
+    </a>
     
-    <div class="card stats-card border-info">
+    <a href="{% url 'procurement_list' %}{% if selected_quarter %}?quarter={{ selected_quarter }}{% endif %}" class="card stats-card border-info text-decoration-none" style="cursor: pointer;">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -123,7 +123,7 @@
             </div>
           </div>
         </div>
-    </div>
+    </a>
 </div>
 
 <!-- Charts Section -->

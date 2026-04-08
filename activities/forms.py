@@ -1,18 +1,30 @@
 from django import forms
 from .models import Activity, ActivityAttachment
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from masters.models import (
+    Funder,
+    ActivityStatus,
+    ProcurementType,
+    ActivityCategory,
+    ActivitySubCategory,
+)
 from accounts.models import Cluster, User
-from datetime import date
 
 
 class ActivityForm(forms.ModelForm):
     """Form for creating and editing activities with role-based field restrictions"""
 
-    category = forms.MultipleChoiceField(
-        choices=Activity.CATEGORY_CHOICES,
+    categories = forms.ModelMultipleChoiceField(
+        queryset=ActivityCategory.objects.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        label="Category"
+        label="Main Categories"
+    )
+
+    sub_categories = forms.ModelMultipleChoiceField(
+        queryset=ActivitySubCategory.objects.none(),
+        required=False,
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'size': 8}),
+        label="Sub Categories"
     )
     
     clusters = forms.ModelMultipleChoiceField(
@@ -32,9 +44,9 @@ class ActivityForm(forms.ModelForm):
     class Meta:
         model = Activity
         fields = [
-            'name', 'category', 'clusters', 'funders', 'status', 
+            'name', 'categories', 'sub_categories', 'clusters', 'funders', 'status', 
             'planned_month', 'total_budget', 'disbursed_amount', 
-            'currency', 'responsible_officer', 'notes',
+            'currency', 'responsible_officer', 'notes', 'is_construction', 'in_procurement_plan',
             # Recurrence fields
             'is_recurring', 'recurrence_pattern', 'recurrence_interval', 'recurrence_end_date',
             # Procurement fields
@@ -49,6 +61,8 @@ class ActivityForm(forms.ModelForm):
             'currency': forms.Select(attrs={'class': 'form-select'}),
             'responsible_officer': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Additional notes'}),
+            'is_construction': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'in_procurement_plan': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             # Recurrence
             'is_recurring': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'recurrence_pattern': forms.Select(attrs={'class': 'form-select'}),
@@ -61,7 +75,8 @@ class ActivityForm(forms.ModelForm):
         }
         labels = {
             'name': 'Activity Name',
-            'category': 'Category',
+            'categories': 'Main Categories',
+            'sub_categories': 'Sub Categories',
             'status': 'Implementation Status',
             'planned_month': 'Planned Month',
             'total_budget': 'Total Budget',
@@ -69,6 +84,8 @@ class ActivityForm(forms.ModelForm):
             'currency': 'Currency',
             'responsible_officer': 'Responsible Officer',
             'notes': 'Notes',
+            'is_construction': 'Is this a construction?',
+            'in_procurement_plan': 'Is this in the procurement plan?',
             # Recurrence
             'is_recurring': 'This is a recurring activity',
             'recurrence_pattern': 'Recurrence Pattern',
@@ -82,7 +99,8 @@ class ActivityForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['category'].initial = self.instance.category if self.instance and self.instance.pk else []
+        self.fields['categories'].queryset = ActivityCategory.objects.filter(active=True).order_by('name')
+        self.fields['sub_categories'].queryset = ActivitySubCategory.objects.filter(active=True).select_related('category').order_by('category__name', 'name')
         # Filter to only show active procurement types
         self.fields['procurement_type'].queryset = ProcurementType.objects.filter(active=True)
         self.fields['responsible_officer'].queryset = User.objects.filter(is_active=True).distinct().order_by('first_name', 'last_name', 'username')
@@ -112,15 +130,18 @@ class ActivityForm(forms.ModelForm):
 
         clusters = cleaned_data.get('clusters')
         funders = cleaned_data.get('funders')
-        categories = cleaned_data.get('category') or []
+        categories = cleaned_data.get('categories')
+        sub_categories = cleaned_data.get('sub_categories')
         if not clusters:
             self.add_error('clusters', 'Please select at least one cluster.')
         if not funders:
             self.add_error('funders', 'Please select at least one funder.')
-
-        valid_categories = {value for value, _ in Activity.CATEGORY_CHOICES}
-        if any(category_value not in valid_categories for category_value in categories):
-            self.add_error('category', 'Invalid category selection.')
+        if not categories or categories.count() == 0:
+            self.add_error('categories', 'Please select at least one main category.')
+        if sub_categories and categories:
+            invalid_sub_categories = sub_categories.exclude(category__in=categories)
+            if invalid_sub_categories.exists():
+                self.add_error('sub_categories', 'Selected sub categories must belong to selected main categories.')
 
         # Validate budget amounts
         total_budget = cleaned_data.get('total_budget')

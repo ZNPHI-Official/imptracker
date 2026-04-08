@@ -88,6 +88,16 @@
                 <i class="bi bi-list-task me-1"></i><span class="d-lg-inline d-md-none">Activities</span>
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link fw-500 {% if request.resolver_match.url_name == 'procurement_list' or request.resolver_match.url_name == 'procurement_detail' %}active{% endif %}" href="{% url 'procurement_list' %}">
+                <i class="bi bi-cart me-1"></i><span class="d-lg-inline d-md-none">Procurements</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fw-500 {% if request.resolver_match.url_name == 'construction_list' or request.resolver_match.url_name == 'construction_detail' %}active{% endif %}" href="{% url 'construction_list' %}">
+                <i class="bi bi-building me-1"></i><span class="d-lg-inline d-md-none">Construction</span>
+              </a>
+            </li>
 
             <li class="nav-item">
               <a class="nav-link fw-500 {% if request.resolver_match.url_name == 'my_space' %}active{% endif %}" href="{% url 'dashboards:my_space' %}">

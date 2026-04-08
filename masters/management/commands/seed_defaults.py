@@ -2,7 +2,13 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from masters.models import ActivityStatus, Currency, ProcurementType
+from masters.models import (
+    ActivityStatus,
+    Currency,
+    ProcurementType,
+    ActivityCategory,
+    ActivitySubCategory,
+)
 
 # Default reference data
 DEFAULT_STATUSES = [
@@ -27,6 +33,19 @@ DEFAULT_PROCUREMENT_TYPES = [
     {"code": "other", "name": "Other", "is_default": False},
 ]
 
+DEFAULT_ACTIVITY_CATEGORIES = [
+    {"name": "Technical"},
+    {"name": "Capacity building"},
+    {"name": "After Action Review"},
+    {"name": "Operational Costs"},
+    {"name": "Systems Strengthening"},
+]
+
+DEFAULT_ACTIVITY_SUB_CATEGORIES = {
+    "Technical": ["Preparedness", "Prevention", "Detection", "Response"],
+    "Operational Costs": ["Rent", "Utilities", "Salaries", "Vehicle Service"],
+}
+
 DEFAULT_GROUPS = {
     "System Admin": "all",
     "User Manager": [
@@ -41,6 +60,8 @@ DEFAULT_GROUPS = {
         "masters.activitystatus",
         "masters.currency",
         "masters.procurementtype",
+        "masters.activitycategory",
+        "masters.activitysubcategory",
         "uploads.uploadbatch",
     ],
     "Project Coordinator": [
@@ -51,6 +72,8 @@ DEFAULT_GROUPS = {
         "masters.activitystatus",
         "masters.currency",
         "masters.procurementtype",
+        "masters.activitycategory",
+        "masters.activitysubcategory",
         "uploads.uploadbatch",
     ],
     "Activity Manager": [
@@ -65,6 +88,8 @@ DEFAULT_GROUPS = {
         "masters.activitystatus",
         "masters.currency",
         "masters.procurementtype",
+        "masters.activitycategory",
+        "masters.activitysubcategory",
         "audit.auditlog",
     ],
 }
@@ -78,6 +103,7 @@ class Command(BaseCommand):
             self._seed_statuses()
             self._seed_currencies()
             self._seed_procurement_types()
+            self._seed_activity_categories()
             self._seed_groups()
         self.stdout.write(self.style.SUCCESS("Default data seeding complete."))
 
@@ -126,6 +152,30 @@ class Command(BaseCommand):
                 obj.is_default = entry["is_default"]
                 obj.save(update_fields=["is_default"])
             self.stdout.write(f"Procurement Type: {obj.name} ({'created' if created else 'exists'})")
+
+    def _seed_activity_categories(self):
+        categories_by_name = {}
+        for entry in DEFAULT_ACTIVITY_CATEGORIES:
+            obj, created = ActivityCategory.objects.get_or_create(
+                name=entry["name"],
+                defaults={"active": True},
+            )
+            categories_by_name[obj.name] = obj
+            self.stdout.write(f"Activity Category: {obj.name} ({'created' if created else 'exists'})")
+
+        for parent_name, sub_names in DEFAULT_ACTIVITY_SUB_CATEGORIES.items():
+            parent = categories_by_name.get(parent_name)
+            if not parent:
+                continue
+            for sub_name in sub_names:
+                sub_obj, created = ActivitySubCategory.objects.get_or_create(
+                    category=parent,
+                    name=sub_name,
+                    defaults={"active": True},
+                )
+                self.stdout.write(
+                    f"Activity Sub Category: {sub_obj.name} under {parent.name} ({'created' if created else 'exists'})"
+                )
 
     def _seed_groups(self):
         for group_name, model_list in DEFAULT_GROUPS.items():

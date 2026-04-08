@@ -33,4 +33,11 @@ urlpatterns = [
     path('procurement-types/create/', views.procurement_type_create, name='procurement_type_create'),
     path('procurement-types/<int:pk>/edit/', views.procurement_type_edit, name='procurement_type_edit'),
     path('procurement-types/<int:pk>/delete/', views.procurement_type_delete, name='procurement_type_delete'),
+
+    # Activity Category Management
+    path('categories/', views.category_list, name='category_list'),
+    path('categories/create/', views.category_create, name='category_create'),
+    path('sub-categories/create/', views.sub_category_create, name='sub_category_create'),
+    path('sub-categories/<int:pk>/move/', views.sub_category_move, name='sub_category_move'),
+    path('categories/<int:pk>/convert-to-sub-category/', views.category_convert_to_sub_category, name='category_convert_to_sub_category'),
 ]
