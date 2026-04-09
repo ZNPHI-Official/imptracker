@@ -365,3 +365,13 @@
   background-color: var(--bs-primary);
   border-color: var(--bs-primary);
 }
+
+/* ========================================
+   CHARTS
+   ======================================== */
+
+/* Budget vs Disbursed by Cluster — force legend onto a single row */
+#budget-disbursed-cluster-chart .apexcharts-legend {
+  flex-wrap: nowrap !important;
+  justify-content: center !important;
+}

@@ -4,6 +4,7 @@
 
 {% block title %}Dashboard{% endblock %}
 
+
 {% block breadcrumb %}
 <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
 {% endblock %}
@@ -543,17 +544,20 @@ document.addEventListener("DOMContentLoaded", function() {
             {
                 name: 'Disbursed',
                 type: 'bar',
-                data: budget_by_cluster_data.disbursed_series
+                data: budget_by_cluster_data.disbursed_series,
+                yAxisIndex: 0
             },
             {
-                name: 'Remaining',
+                name: 'Balance',
                 type: 'bar',
-                data: budget_by_cluster_data.remaining_series
+                data: budget_by_cluster_data.remaining_series,
+                yAxisIndex: 0
             },
             {
                 name: 'Execution Rate (%)',
                 type: 'line',
-                data: burn_rate_by_cluster_data.rates
+                data: burn_rate_by_cluster_data.rates,
+                yAxisIndex: 3
             }
         ],
         xaxis: {
@@ -575,22 +579,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 title: { text: 'Amount (K)' }
             },
             {
-                seriesName: 'Disbursed',
-                show: false,
-                labels: {
-                    formatter: function (val) {
-                        return formatKwachaShort(val);
-                    }
-                }
+                seriesName: 'Total Budget',
+                show: false
             },
             {
-                seriesName: 'Remaining',
-                show: false,
-                labels: {
-                    formatter: function (val) {
-                        return formatKwachaShort(val);
-                    }
-                }
+                seriesName: 'Total Budget',
+                show: false
             },
             {
                 seriesName: 'Execution Rate (%)',
@@ -625,7 +619,12 @@ document.addEventListener("DOMContentLoaded", function() {
         },
         legend: {
             position: 'top',
-            fontSize: '14px'
+            fontSize: '14px',
+            horizontalAlign: 'center',
+            itemMargin: {
+                horizontal: 16,
+                vertical: 0
+            }
         },
         tooltip: {
             shared: true,
@@ -790,7 +789,13 @@ document.addEventListener("DOMContentLoaded", function() {
         dataLabels: {
             enabled: true,
             offsetX: 6,
-            formatter: function (val) { return formatKwachaShort(val); },
+            formatter: function (val, opts) {
+                if (opts.seriesIndex === 1) {
+                    var rate = funding_distribution_data.exec_rates[opts.dataPointIndex];
+                    return formatKwachaShort(val) + ' (' + rate.toFixed(1) + '%)';
+                }
+                return formatKwachaShort(val);
+            },
             style: {
                 fontSize: '11px',
                 colors: ['#1e293b']
