@@ -197,7 +197,7 @@
     <!-- Breadcrumb -->
     {% if request.user.is_authenticated %}
     <div class="bg-white border-bottom sticky-md-top" style="top: var(--app-navbar-height); z-index: 1050;">
-      <div class="container-fluid px-3 px-md-4 py-2">
+      <div class="container-fluid px-3 px-md-4" style="padding-top: 5px; padding-bottom: 5px;">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-0 small">
             <li class="breadcrumb-item"><a href="{% url 'dashboards:dashboard' %}">Home</a></li>
@@ -230,7 +230,7 @@
 
     <!-- Main Content -->
     <main class="flex-fill">
-      <div class="container-fluid px-3 px-md-4 py-4">
+      <div class="container-fluid px-3 px-md-4" style="padding-top: 5px; padding-bottom: 5px;">
         {% block content %}{% endblock %}
       </div>
     </main>
