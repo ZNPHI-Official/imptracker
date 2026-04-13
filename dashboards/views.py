@@ -108,15 +108,38 @@ def dashboard(request):
     total_activities = qs_distinct.count()
     by_year = list(qs_distinct.values('year').annotate(total=Count('id')).order_by('year'))
     by_status = list(qs_distinct.values('status__name').annotate(total=Count('id')).filter(status__name__isnull=False))
-    by_cluster = list(qs.values('clusters__short_name').annotate(
-        total=Count('id', distinct=True),
-        total_budget=Sum('total_budget'),
-        total_disbursed=Sum('disbursed_amount')
-    ).filter(clusters__short_name__isnull=False).order_by('clusters__short_name'))
-    by_funder = list(qs.values('funders__name').annotate(
-        total=Count('id', distinct=True),
-        total_budget=Sum('total_budget')
-    ).filter(funders__name__isnull=False).order_by('funders__name'))
+    # Aggregate per-cluster in Python to avoid SQL row multiplication from multiple M2M joins
+    _cluster_agg = {}
+    for _activity in qs_distinct.prefetch_related('clusters'):
+        _budget = float(_activity.total_budget or 0)
+        _disbursed = float(_activity.disbursed_amount or 0)
+        for _cluster in _activity.clusters.all():
+            if _cluster.short_name:
+                if _cluster.short_name not in _cluster_agg:
+                    _cluster_agg[_cluster.short_name] = {'total': 0, 'total_budget': 0.0, 'total_disbursed': 0.0}
+                _cluster_agg[_cluster.short_name]['total'] += 1
+                _cluster_agg[_cluster.short_name]['total_budget'] += _budget
+                _cluster_agg[_cluster.short_name]['total_disbursed'] += _disbursed
+    by_cluster = [
+        {'clusters__short_name': name, 'total': data['total'], 'total_budget': data['total_budget'], 'total_disbursed': data['total_disbursed']}
+        for name, data in sorted(_cluster_agg.items())
+    ]
+    # Aggregate per-funder in Python to avoid M2M row multiplication
+    _funder_agg = {}
+    for _fa in qs_distinct.prefetch_related('funders'):
+        _fb = float(_fa.total_budget or 0)
+        _fd = float(_fa.disbursed_amount or 0)
+        for _f in _fa.funders.all():
+            if _f.name:
+                if _f.name not in _funder_agg:
+                    _funder_agg[_f.name] = {'total': 0, 'total_budget': 0.0, 'total_disbursed': 0.0}
+                _funder_agg[_f.name]['total']          += 1
+                _funder_agg[_f.name]['total_budget']   += _fb
+                _funder_agg[_f.name]['total_disbursed'] += _fd
+    by_funder = [
+        {'funders__name': name, 'total': d['total'], 'total_budget': d['total_budget'], 'total_disbursed': d['total_disbursed']}
+        for name, d in sorted(_funder_agg.items())
+    ]
     by_quarter = list(qs_distinct.values('quarter').annotate(total=Count('id')).filter(quarter__isnull=False).order_by('quarter'))
     by_month = list(qs_distinct.values('planned_month__year', 'planned_month__month').annotate(
         total_disbursed=Sum('disbursed_amount')
@@ -164,13 +187,158 @@ def dashboard(request):
     cluster_budgets = [float(item.get('total_budget') or 0) for item in by_cluster if item.get('clusters__short_name')]
     cluster_disbursed = [float(item.get('total_disbursed') or 0) for item in by_cluster if item.get('clusters__short_name')]
     cluster_remaining = [float((item.get('total_budget') or 0)) - float((item.get('total_disbursed') or 0)) for item in by_cluster if item.get('clusters__short_name')]
+    cluster_execution_rates = [
+        round(float(item.get('total_disbursed') or 0) / float(item.get('total_budget') or 1) * 100, 1)
+        if float(item.get('total_budget') or 0) > 0 else 0
+        for item in by_cluster if item.get('clusters__short_name')
+    ]
 
-    funder_labels = [item.get('funders__name') for item in by_funder if item.get('funders__name')]
-    funder_counts = [item.get('total') for item in by_funder if item.get('funders__name')]
-    funder_budgets = [float(item.get('total_budget') or 0) for item in by_funder if item.get('funders__name')]
+    funder_labels    = [item.get('funders__name') for item in by_funder if item.get('funders__name')]
+    funder_counts    = [item.get('total') for item in by_funder if item.get('funders__name')]
+    funder_budgets   = [float(item.get('total_budget') or 0) for item in by_funder if item.get('funders__name')]
+    funder_disbursed = [float(item.get('total_disbursed') or 0) for item in by_funder if item.get('funders__name')]
+    funder_execution_rates = [
+        round(float(item.get('total_disbursed') or 0) / float(item.get('total_budget') or 1) * 100, 1)
+        if float(item.get('total_budget') or 0) > 0 else 0.0
+        for item in by_funder if item.get('funders__name')
+    ]
 
     quarter_labels = [f'Q{item.get("quarter")}' for item in by_quarter if item.get("quarter")]
     quarter_counts = [item.get('total') for item in by_quarter if item.get("quarter")]
+
+    # ---- Activity category / sub-category aggregation --------------------------
+    # Fixed ordering matches the master data so colors are always consistent
+    _CATEGORIES = ['Technical', 'Capacity building', 'After Action Review', 'Operational Costs', 'Systems Strengthening']
+    _TECH_SUBS  = ['Preparedness', 'Prevention', 'Detection', 'Response']
+    _OPEX_SUBS  = ['Rent', 'Utilities', 'Salaries', 'Vehicle Service']
+
+    _cat_agg    = {c: {'count': 0, 'budget': 0.0, 'disbursed': 0.0} for c in _CATEGORIES}
+    _subcat_agg = {}  # keyed by subcat name, built dynamically
+
+    for _act in qs_distinct.prefetch_related('categories', 'sub_categories'):
+        _ab = float(_act.total_budget or 0)
+        _ad = float(_act.disbursed_amount or 0)
+        for _cat in _act.categories.all():
+            _cn = _cat.name
+            if _cn not in _cat_agg:
+                _cat_agg[_cn] = {'count': 0, 'budget': 0.0, 'disbursed': 0.0}
+            _cat_agg[_cn]['count']    += 1
+            _cat_agg[_cn]['budget']   += _ab
+            _cat_agg[_cn]['disbursed'] += _ad
+        for _sc in _act.sub_categories.all():
+            _sn = _sc.name
+            if _sn not in _subcat_agg:
+                _subcat_agg[_sn] = {'count': 0, 'budget': 0.0, 'disbursed': 0.0}
+            _subcat_agg[_sn]['count']    += 1
+            _subcat_agg[_sn]['budget']   += _ab
+            _subcat_agg[_sn]['disbursed'] += _ad
+
+    def _cat_exec(name):
+        d = _cat_agg.get(name, {})
+        b = d.get('budget', 0)
+        return round(d.get('disbursed', 0) / b * 100, 1) if b > 0 else 0.0
+
+    def _sc_exec(name):
+        d = _subcat_agg.get(name, {})
+        b = d.get('budget', 0)
+        return round(d.get('disbursed', 0) / b * 100, 1) if b > 0 else 0.0
+
+    category_activity_data = json.dumps({
+        'labels':          _CATEGORIES,
+        'counts':          [_cat_agg[c]['count']    for c in _CATEGORIES],
+        'budgets':         [_cat_agg[c]['budget']   for c in _CATEGORIES],
+        'disbursed':       [_cat_agg[c]['disbursed'] for c in _CATEGORIES],
+        'execution_rates': [_cat_exec(c)             for c in _CATEGORIES],
+    })
+
+    technical_subcat_data = json.dumps({
+        'labels':          _TECH_SUBS,
+        'counts':          [_subcat_agg.get(s, {}).get('count', 0)    for s in _TECH_SUBS],
+        'budgets':         [_subcat_agg.get(s, {}).get('budget', 0.0) for s in _TECH_SUBS],
+        'disbursed':       [_subcat_agg.get(s, {}).get('disbursed', 0.0) for s in _TECH_SUBS],
+        'execution_rates': [_sc_exec(s) for s in _TECH_SUBS],
+    })
+
+    opex_subcat_data = json.dumps({
+        'labels':          _OPEX_SUBS,
+        'counts':          [_subcat_agg.get(s, {}).get('count', 0)    for s in _OPEX_SUBS],
+        'budgets':         [_subcat_agg.get(s, {}).get('budget', 0.0) for s in _OPEX_SUBS],
+        'disbursed':       [_subcat_agg.get(s, {}).get('disbursed', 0.0) for s in _OPEX_SUBS],
+        'execution_rates': [_sc_exec(s) for s in _OPEX_SUBS],
+    })
+    # ---- End category aggregation -----------------------------------------------
+
+    # ---- Planned vs Actual aggregation ------------------------------------------
+    from django.db.models import F
+
+    # --- Activities: planned quarter vs actual completion quarter ---
+    _pva_plan   = {}   # {quarter_label: count planned}
+    _pva_actual = {}   # {quarter_label: count actually completed}
+    _pva_ontime = {}   # {quarter_label: completed on or before planned quarter}
+    _pva_late   = {}   # {quarter_label: completed after planned quarter}
+
+    for _act in qs_distinct.only('planned_month', 'quarter', 'year', 'actual_completion_date'):
+        if _act.planned_month and _act.quarter and _act.year:
+            _ql = f'Q{_act.quarter} {_act.year}'
+            _pva_plan[_ql] = _pva_plan.get(_ql, 0) + 1
+
+        if _act.actual_completion_date:
+            _aq  = ((_act.actual_completion_date.month - 1) // 3) + 1
+            _aql = f'Q{_aq} {_act.actual_completion_date.year}'
+            _pva_actual[_aql] = _pva_actual.get(_aql, 0) + 1
+            # on-time: actual quarter <= planned quarter (same year)
+            if _act.planned_month:
+                _planned_end = (_act.year, _act.quarter)
+                _actual_end  = (_act.actual_completion_date.year, _aq)
+                if _actual_end <= _planned_end:
+                    _pva_ontime[_aql] = _pva_ontime.get(_aql, 0) + 1
+                else:
+                    _pva_late[_aql] = _pva_late.get(_aql, 0) + 1
+
+    _pva_quarters = sorted(
+        set(list(_pva_plan.keys()) + list(_pva_actual.keys())),
+        key=lambda x: (int(x.split()[1]), int(x[1]))
+    )
+
+    activity_planned_vs_actual = json.dumps({
+        'quarters': _pva_quarters,
+        'planned':  [_pva_plan.get(q, 0)   for q in _pva_quarters],
+        'actual':   [_pva_actual.get(q, 0)  for q in _pva_quarters],
+        'on_time':  [_pva_ontime.get(q, 0)  for q in _pva_quarters],
+        'late':     [_pva_late.get(q, 0)    for q in _pva_quarters],
+    })
+
+    # --- Procurement stages: planned count vs actual count, and on-time count ---
+    _PROC_STAGE_FIELDS = [
+        ('Tendering', 'tendering_date', 'actual_tendering_date'),
+        ('Order',     'order_date',     'actual_order_date'),
+        ('Delivery',  'delivery_date',  'actual_delivery_date'),
+        ('Payment',   'payment_date',   'actual_payment_date'),
+    ]
+    _ps_planned = []
+    _ps_actual  = []
+    _ps_ontime  = []
+    _ps_late    = []
+    for _stage_name, _pf, _af in _PROC_STAGE_FIELDS:
+        _ps_planned.append(qs_distinct.filter(**{f'{_pf}__isnull': False}).count())
+        _ps_actual.append(qs_distinct.filter(**{f'{_af}__isnull': False}).count())
+        _ps_ontime.append(qs_distinct.filter(
+            **{f'{_af}__isnull': False, f'{_pf}__isnull': False,
+               f'{_af}__lte': F(_pf)}
+        ).count())
+        _ps_late.append(qs_distinct.filter(
+            **{f'{_af}__isnull': False, f'{_pf}__isnull': False,
+               f'{_af}__gt': F(_pf)}
+        ).count())
+
+    procurement_planned_vs_actual = json.dumps({
+        'stages':   ['Tendering', 'Order', 'Delivery', 'Payment'],
+        'planned':  _ps_planned,
+        'actual':   _ps_actual,
+        'on_time':  _ps_ontime,
+        'late':     _ps_late,
+    })
+    # ---- End planned vs actual aggregation --------------------------------------
 
     month_labels = [f'{item.get("planned_month__year")}-{item.get("planned_month__month"):02d}' for item in by_month if item.get("planned_month__year")]
     month_disbursed = [float(item.get('total_disbursed') or 0) for item in by_month if item.get("planned_month__year")]
@@ -182,6 +350,133 @@ def dashboard(request):
         cumsum += val
         cumulative_disbursed.append(cumsum)
     
+    # Procurement stage timeline and status aggregation
+    _today = date.today()
+    _stages = [
+        ('Tendering', 'tendering_date', 'actual_tendering_date'),
+        ('Order',     'order_date',     'actual_order_date'),
+        ('Delivery',  'delivery_date',  'actual_delivery_date'),
+        ('Payment',   'payment_date',   'actual_payment_date'),
+    ]
+    _stage_status = {s[0]: {'completed': 0, 'pending': 0, 'overdue': 0} for s in _stages}
+    _quarter_stage_counts = {}  # {quarter_label: {stage_name: count}}
+
+    for _act in qs_distinct.only(
+        'tendering_date', 'order_date', 'delivery_date', 'payment_date',
+        'actual_tendering_date', 'actual_order_date', 'actual_delivery_date', 'actual_payment_date'
+    ):
+        for _stage_name, _planned_field, _actual_field in _stages:
+            _planned = getattr(_act, _planned_field)
+            _actual = getattr(_act, _actual_field)
+            if _actual:
+                _stage_status[_stage_name]['completed'] += 1
+            elif _planned:
+                if _planned < _today:
+                    _stage_status[_stage_name]['overdue'] += 1
+                else:
+                    _stage_status[_stage_name]['pending'] += 1
+            if _planned:
+                _q = ((_planned.month - 1) // 3) + 1
+                _qlabel = f'Q{_q} {_planned.year}'
+                if _qlabel not in _quarter_stage_counts:
+                    _quarter_stage_counts[_qlabel] = {s[0]: 0 for s in _stages}
+                _quarter_stage_counts[_qlabel][_stage_name] += 1
+
+    _sorted_quarters = sorted(
+        _quarter_stage_counts.keys(),
+        key=lambda x: (int(x.split()[1]), int(x[1]))
+    )
+
+    procurement_stage_timeline_data = json.dumps({
+        'quarters': _sorted_quarters,
+        'tendering': [_quarter_stage_counts[q]['Tendering'] for q in _sorted_quarters],
+        'order':     [_quarter_stage_counts[q]['Order']     for q in _sorted_quarters],
+        'delivery':  [_quarter_stage_counts[q]['Delivery']  for q in _sorted_quarters],
+        'payment':   [_quarter_stage_counts[q]['Payment']   for q in _sorted_quarters],
+    })
+
+    procurement_stage_status_data = json.dumps({
+        'stages':    [s[0] for s in _stages],
+        'completed': [_stage_status[s[0]]['completed'] for s in _stages],
+        'pending':   [_stage_status[s[0]]['pending']   for s in _stages],
+        'overdue':   [_stage_status[s[0]]['overdue']   for s in _stages],
+    })
+
+    # ---- Construction activity aggregations ----------------------------------------
+    qs_construction = qs_distinct.filter(is_construction=True)
+    construction_total = qs_construction.count()
+
+    # Status distribution
+    _const_status_qs = list(
+        qs_construction.values('status__name')
+        .annotate(n=Count('id'))
+        .filter(status__name__isnull=False)
+        .order_by('-n')
+    )
+    const_status_labels = [r['status__name'] for r in _const_status_qs]
+    const_status_counts = [r['n'] for r in _const_status_qs]
+
+    # Budget vs disbursed per cluster (Python aggregation — avoids M2M multiplication)
+    _const_cluster_agg = {}
+    for _ca in qs_construction.prefetch_related('clusters'):
+        _cb = float(_ca.total_budget or 0)
+        _cd = float(_ca.disbursed_amount or 0)
+        for _cl in _ca.clusters.all():
+            if _cl.short_name:
+                if _cl.short_name not in _const_cluster_agg:
+                    _const_cluster_agg[_cl.short_name] = {'budget': 0.0, 'disbursed': 0.0}
+                _const_cluster_agg[_cl.short_name]['budget']    += _cb
+                _const_cluster_agg[_cl.short_name]['disbursed'] += _cd
+    _const_cluster_agg = dict(sorted(_const_cluster_agg.items()))
+    const_cluster_labels    = list(_const_cluster_agg.keys())
+    const_cluster_budgets   = [v['budget']    for v in _const_cluster_agg.values()]
+    const_cluster_disbursed = [v['disbursed'] for v in _const_cluster_agg.values()]
+    const_cluster_balance   = [v['budget'] - v['disbursed'] for v in _const_cluster_agg.values()]
+
+    # Quarter × status stacked bar (timeline)
+    _all_statuses_for_const = list(dict.fromkeys(const_status_labels))  # ordered, unique
+    _const_quarter_status = {}  # {quarter_label: {status_name: count}}
+    for _ca in qs_construction.select_related('status'):
+        if not _ca.planned_month:
+            continue
+        _q = ((_ca.planned_month.month - 1) // 3) + 1
+        _ql = f'Q{_q} {_ca.planned_month.year}'
+        _sn = _ca.status.name if _ca.status else 'Unknown'
+        if _ql not in _const_quarter_status:
+            _const_quarter_status[_ql] = {}
+        _const_quarter_status[_ql][_sn] = _const_quarter_status[_ql].get(_sn, 0) + 1
+        if _sn not in _all_statuses_for_const:
+            _all_statuses_for_const.append(_sn)
+    _const_quarters_sorted = sorted(
+        _const_quarter_status.keys(),
+        key=lambda x: (int(x.split()[1]), int(x[1]))
+    )
+
+    construction_timeline_data = json.dumps({
+        'quarters': _const_quarters_sorted,
+        'statuses': _all_statuses_for_const,
+        'series': [
+            {
+                'name': _st,
+                'data': [_const_quarter_status.get(_q, {}).get(_st, 0) for _q in _const_quarters_sorted]
+            }
+            for _st in _all_statuses_for_const
+        ]
+    })
+
+    construction_cluster_data = json.dumps({
+        'labels':    const_cluster_labels,
+        'budget':    const_cluster_budgets,
+        'disbursed': const_cluster_disbursed,
+        'balance':   const_cluster_balance,
+    })
+
+    construction_status_data = json.dumps({
+        'labels': const_status_labels,
+        'series': const_status_counts,
+    })
+    # ---- End construction aggregations -------------------------------------------
+
     # Get recent activities (ordered by most recently updated based on audit logs)
     recent_activity_ids = AuditLog.objects.filter(
         activity_id__isnull=False
@@ -198,6 +493,12 @@ def dashboard(request):
     # Count clusters and funders
     total_clusters = qs.values('clusters').distinct().count()
     total_funders = qs.values('funders').distinct().count()
+
+    # Full unfiltered lists for filter dropdowns (always show all options regardless of current filter)
+    from accounts.models import Cluster as ClusterModel
+    from masters.models import Funder as FunderModel
+    all_clusters = list(ClusterModel.objects.values_list('short_name', flat=True).order_by('short_name'))
+    all_funders  = list(FunderModel.objects.filter(active=True).values_list('name', flat=True).order_by('name'))
 
     # Determine chart visibility based on user role and data
     show_cluster_chart = total_clusters > 1 or role_category not in ['coordinator', 'manager']
@@ -378,6 +679,10 @@ def dashboard(request):
         'show_cluster_chart': show_cluster_chart,
         'show_funder_chart': show_funder_chart,
         'selected_quarter': str(quarter) if quarter else '',
+        'selected_cluster': cluster or '',
+        'selected_funder':  funder or '',
+        'all_clusters': all_clusters,
+        'all_funders':  all_funders,
         # Chart data for new visualizations
         'activities_by_cluster_data': json.dumps({
             'labels': cluster_labels,
@@ -387,7 +692,8 @@ def dashboard(request):
             'labels': cluster_labels,
             'budget_series': cluster_budgets,
             'disbursed_series': cluster_disbursed,
-            'remaining_series': cluster_remaining
+            'remaining_series': cluster_remaining,
+            'execution_rate_series': cluster_execution_rates
         }),
         'status_distribution_data': json.dumps({
             'labels': status_labels,
@@ -408,13 +714,26 @@ def dashboard(request):
             'cumulative_series': cumulative_disbursed
         }),
         'funding_distribution_data': json.dumps({
-            'labels': funder_labels,
-            'series': funder_budgets
+            'labels':          funder_labels,
+            'series':          funder_budgets,
+            'disbursed':       funder_disbursed,
+            'execution_rates': funder_execution_rates,
         }),
         'quarterly_data': json.dumps({
             'labels': quarter_labels,
             'series': quarter_counts
         }),
+        'procurement_stage_timeline_data': procurement_stage_timeline_data,
+        'procurement_stage_status_data': procurement_stage_status_data,
+        'activity_planned_vs_actual': activity_planned_vs_actual,
+        'procurement_planned_vs_actual': procurement_planned_vs_actual,
+        'category_activity_data': category_activity_data,
+        'technical_subcat_data': technical_subcat_data,
+        'opex_subcat_data': opex_subcat_data,
+        'construction_total': construction_total,
+        'construction_cluster_data': construction_cluster_data,
+        'construction_status_data': construction_status_data,
+        'construction_timeline_data': construction_timeline_data,
     }
     context.update({
         'years_json': json.dumps(years),

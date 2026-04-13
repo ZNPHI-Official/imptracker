@@ -138,7 +138,19 @@ class Activity(models.Model):
         default=False,
         help_text="True if this activity is in the procurement plan",
     )
-    
+
+    # ============================================================================
+    # PROCUREMENT STAGE TIMELINE FIELDS
+    # ============================================================================
+    tendering_date = models.DateField(null=True, blank=True, help_text="Planned tendering date")
+    order_date = models.DateField(null=True, blank=True, help_text="Planned order placement date")
+    delivery_date = models.DateField(null=True, blank=True, help_text="Expected delivery date")
+    payment_date = models.DateField(null=True, blank=True, help_text="Expected payment date")
+    actual_tendering_date = models.DateField(null=True, blank=True, help_text="Actual tendering completion date")
+    actual_order_date = models.DateField(null=True, blank=True, help_text="Actual order placement date")
+    actual_delivery_date = models.DateField(null=True, blank=True, help_text="Actual delivery date")
+    actual_payment_date = models.DateField(null=True, blank=True, help_text="Actual payment date")
+
     class Meta:
         ordering = ['-year', 'activity_id']
         indexes = [
