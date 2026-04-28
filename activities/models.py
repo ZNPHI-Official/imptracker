@@ -1,22 +1,36 @@
+from typing import Optional
 
 from django.db import models
 from django.conf import settings
-from masters.models import Funder, ActivityStatus, Currency, ProcurementType
+from django.utils import timezone
+from masters.models import (
+    Funder,
+    ActivityStatus,
+    Currency,
+    ProcurementType,
+    ActivityCategory,
+    ActivitySubCategory,
+)
 from accounts.models import Cluster
 from django.db import transaction, IntegrityError
 import calendar
 from datetime import date
 
 class Activity(models.Model):
-    CATEGORY_CHOICES = [
-        ('prevention', 'Prevention'),
-        ('detection', 'Detection'),
-        ('response', 'Response'),
-    ]
-
     activity_id=models.CharField(max_length=15,unique=True)
     name=models.TextField()
-    category=models.JSONField(default=list, blank=True, help_text="Activity categories")
+    # Legacy category field kept for backward compatibility with older records.
+    category=models.JSONField(default=list, blank=True, help_text="Legacy activity categories")
+    categories = models.ManyToManyField(
+        ActivityCategory,
+        blank=True,
+        related_name='activities',
+    )
+    sub_categories = models.ManyToManyField(
+        ActivitySubCategory,
+        blank=True,
+        related_name='activities',
+    )
     year=models.IntegerField()
     # Activities may be co-funded and implemented by multiple clusters
     funders = models.ManyToManyField(Funder, blank=True, related_name='activities')
@@ -115,7 +129,28 @@ class Activity(models.Model):
         default=False,
         help_text="Auto-set to True if procurement_amount is set and < total_budget"
     )
-    
+    is_construction = models.BooleanField(
+        default=False,
+        help_text="True if this activity is a construction activity",
+    )
+
+    in_procurement_plan = models.BooleanField(
+        default=False,
+        help_text="True if this activity is in the procurement plan",
+    )
+
+    # ============================================================================
+    # PROCUREMENT STAGE TIMELINE FIELDS
+    # ============================================================================
+    tendering_date = models.DateField(null=True, blank=True, help_text="Planned tendering date")
+    order_date = models.DateField(null=True, blank=True, help_text="Planned order placement date")
+    delivery_date = models.DateField(null=True, blank=True, help_text="Expected delivery date")
+    payment_date = models.DateField(null=True, blank=True, help_text="Expected payment date")
+    actual_tendering_date = models.DateField(null=True, blank=True, help_text="Actual tendering completion date")
+    actual_order_date = models.DateField(null=True, blank=True, help_text="Actual order placement date")
+    actual_delivery_date = models.DateField(null=True, blank=True, help_text="Actual delivery date")
+    actual_payment_date = models.DateField(null=True, blank=True, help_text="Actual payment date")
+
     class Meta:
         ordering = ['-year', 'activity_id']
         indexes = [
@@ -133,8 +168,15 @@ class Activity(models.Model):
         return tb - da
 
     def get_category_display_list(self):
-        choice_map = dict(self.CATEGORY_CHOICES)
-        return [choice_map.get(value, value) for value in (self.category or [])]
+        names = list(self.categories.values_list('name', flat=True))
+        if names:
+            return names
+        if isinstance(self.category, list):
+            return [str(value) for value in self.category]
+        return []
+
+    def get_sub_category_display_list(self):
+        return list(self.sub_categories.values_list('name', flat=True))
 
     def clean(self):
         # Validate numeric fields
@@ -162,11 +204,8 @@ class Activity(models.Model):
             if self.recurrence_interval is None or self.recurrence_interval < 1:
                 raise ValidationError({'recurrence_interval': 'Recurrence interval must be at least 1.'})
 
-        if self.category:
-            valid_categories = {value for value, _ in self.CATEGORY_CHOICES}
-            invalid_categories = [value for value in self.category if value not in valid_categories]
-            if invalid_categories:
-                raise ValidationError({'category': 'Invalid category selection.'})
+        if self.category and not isinstance(self.category, list):
+            raise ValidationError({'category': 'Legacy category data must be a list.'})
         
         # Cannot mark a generated instance as recurring
         if self.generated_from_recurrence and self.is_recurring:
@@ -193,6 +232,34 @@ class Activity(models.Model):
             except Exception:
                 continue
         return max_seq + 1
+
+    @staticmethod
+    def _is_fully_implemented_status_name(name: Optional[str]) -> bool:
+        if not name:
+            return False
+        return 'fully implemented' in name.strip().lower()
+
+    def _apply_actual_completion_date_when_fully_implemented(self):
+        """Set actual_completion_date when status becomes Fully Implemented (matches seed name)."""
+        if not self.status_id:
+            return
+        try:
+            status_name = self.status.name
+        except Exception:
+            return
+        if not self._is_fully_implemented_status_name(status_name):
+            return
+        old_full = False
+        if self.pk:
+            prev = (
+                Activity.objects.filter(pk=self.pk)
+                .select_related('status')
+                .first()
+            )
+            if prev and prev.status:
+                old_full = self._is_fully_implemented_status_name(prev.status.name)
+        if not old_full:
+            self.actual_completion_date = timezone.localdate()
 
     def save(self, *args, **kwargs):
         # Ensure year is populated from planned_month
@@ -224,6 +291,7 @@ class Activity(models.Model):
                 try:
                     with transaction.atomic():
                         self.activity_id = f"Y{yy}-{seq:06d}"
+                        self._apply_actual_completion_date_when_fully_implemented()
                         super().save(*args, **kwargs)
                     return
                 except IntegrityError as e:
@@ -264,6 +332,7 @@ class Activity(models.Model):
             self.has_partial_procurement = False
             self.is_procurement = False
 
+        self._apply_actual_completion_date_when_fully_implemented()
         super().save(*args, **kwargs)
 
     def __str__(self): return self.activity_id

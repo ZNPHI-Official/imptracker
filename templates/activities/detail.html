@@ -284,7 +284,7 @@
                 {% endif %}
                 {% if activity.actual_completion_date %}
                 <div class="detail-group">
-                    <label class="detail-label">Actual Completion</label>
+                    <label class="detail-label">Date Implemented (out)</label>
                     <p class="detail-value mb-0">{{ activity.actual_completion_date|date:"d M Y" }}</p>
                 </div>
                 {% endif %}
@@ -307,7 +307,9 @@
                         {% else %}
                         Not specified
                         {% endif %}
-                    </p>
+                    {% else %}
+                        <p class="detail-value mb-0">Not specified</p>
+                    {% endif %}
                 </div>
                 <div class="detail-group mb-3">
                     <label class="detail-label">Quarter</label>

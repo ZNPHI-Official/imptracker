@@ -75,7 +75,7 @@
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">
-                                Category
+                                Main Categories <span class="text-danger">*</span>
                             </label>
                             {{ form.category }}
                             {% if form.category.errors %}
@@ -85,7 +85,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">
                                 Clusters <span class="text-danger">*</span>
                             </label>
@@ -94,13 +94,25 @@
                             <div class="invalid-feedback d-block">{{ form.clusters.errors.0 }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">
                                 Funders <span class="text-danger">*</span>
                             </label>
                             {{ form.funders }}
                             {% if form.funders.errors %}
                             <div class="invalid-feedback d-block">{{ form.funders.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                {{ form.is_construction }}
+                                <label class="form-check-label" for="{{ form.is_construction.id_for_label }}">
+                                    Is this a construction?
+                                </label>
+                            </div>
+                            <small class="text-muted">Leave unchecked unless this activity is a construction activity.</small>
+                            {% if form.is_construction.errors %}
+                                <div class="invalid-feedback d-block">{{ form.is_construction.errors.0 }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -156,7 +168,7 @@
                         {% if form.notes.errors %}
                         <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
                         {% endif %}
-                    </div>
+                    </div>                    
 
                     <!-- Recurrence Section -->
                     <div class="card mb-3">
@@ -254,6 +266,7 @@
 {% block page_js %}
 {{ officer_options|json_script:"officer-options-data" }}
 {{ procurement_type_options|json_script:"procurement-types-data" }}
+{{ category_subcategory_map|json_script:"category-subcategory-map-data" }}
 {{ existing_procurement_breakdowns|json_script:"existing-procurement-breakdowns-data" }}
 <script>
     $(document).ready(function () {
