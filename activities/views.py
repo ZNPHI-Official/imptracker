@@ -78,12 +78,22 @@ def get_responsible_officer_options():
 
 
 def get_procurement_type_options():
-    """Return active procurement types for create/edit JS UI."""
-    return list(
-        ProcurementType.objects.filter(active=True)
-        .order_by('name')
-        .values('code', 'name')
-    )
+    """Return active procurement types for create/edit JS UI.
+    Includes a max_amount threshold where applicable (e.g. Simplified Bidding capped at ZMW 1,000,000).
+    """
+    types = ProcurementType.objects.filter(active=True).order_by('name').values('code', 'name')
+    result = []
+    for t in types:
+        entry = dict(t)
+        name_lower = t['name'].lower()
+        if 'simplified' in name_lower:
+            entry['max_amount'] = 1_000_000
+            entry['exceeds_suggestion'] = 'National Open Bid or International Open Bid'
+        else:
+            entry['max_amount'] = None
+            entry['exceeds_suggestion'] = None
+        result.append(entry)
+    return result
 
 
 def get_category_subcategory_map():
