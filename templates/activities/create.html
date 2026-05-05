@@ -77,10 +77,21 @@
                             <label class="form-label">
                                 Main Categories <span class="text-danger">*</span>
                             </label>
-                            {{ form.category }}
-                            {% if form.category.errors %}
-                            <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+                            {{ form.categories }}
+                            {% if form.categories.errors %}
+                            <div class="invalid-feedback d-block">{{ form.categories.errors.0 }}</div>
                             {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row" id="subCategoriesSection" style="display:none;">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Sub Categories</label>
+                            {{ form.sub_categories }}
+                            {% if form.sub_categories.errors %}
+                            <div class="invalid-feedback d-block">{{ form.sub_categories.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted">Optional — only sub categories for the selected main categories are shown.</small>
                         </div>
                     </div>
 
@@ -336,7 +347,48 @@
             return true;
         }
 
-        // Toggle recurrence fields
+        // ── Category / Sub-category filtering ──────────────────────────────
+        const categorySubcategoryMap = JSON.parse(
+            document.getElementById('category-subcategory-map-data').textContent || '{}'
+        );
+
+        function filterSubcategories() {
+            const selectedCatIds = [];
+            $('input[name="categories"]:checked').each(function () {
+                selectedCatIds.push($(this).val());
+            });
+
+            const allowed = new Set();
+            selectedCatIds.forEach(function (catId) {
+                (categorySubcategoryMap[catId] || []).forEach(function (id) {
+                    allowed.add(String(id));
+                });
+            });
+
+            const $select = $('#id_sub_categories');
+            let visibleCount = 0;
+            $select.find('option').each(function () {
+                const show = allowed.has($(this).val());
+                $(this).toggle(show);
+                if (!show) $(this).prop('selected', false);
+                if (show) visibleCount++;
+            });
+
+            if (selectedCatIds.length > 0 && visibleCount > 0) {
+                $('#subCategoriesSection').show();
+            } else {
+                $('#subCategoriesSection').hide();
+                $select.find('option').prop('selected', false);
+            }
+        }
+
+        // Run on load (pre-populates edit form correctly)
+        filterSubcategories();
+
+        // Re-filter whenever a category checkbox changes
+        $(document).on('change', 'input[name="categories"]', filterSubcategories);
+
+        // ── Toggle recurrence fields ────────────────────────────────────────
         function toggleRecurrenceFields() {
             if ($('#id_is_recurring').is(':checked')) {
                 $('#recurrenceFields').slideDown();

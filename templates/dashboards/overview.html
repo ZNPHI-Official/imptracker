@@ -10,7 +10,36 @@
 
 {% block content %}
 {% if total_activities == 0 or not total_activities %}
-<!-- Empty State -->
+{% if selected_quarter or selected_cluster or selected_funder %}
+<!-- Empty State: filters active but no results -->
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-7 col-md-9">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5 px-4">
+                <div class="mb-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10" style="width:72px;height:72px;">
+                        <i class="bi bi-funnel fs-1 text-warning"></i>
+                    </span>
+                </div>
+                <h4 class="mb-2">No results for the current filters</h4>
+                <p class="text-muted mb-4">
+                    No activities match
+                    {% if selected_quarter %}<strong>Q{{ selected_quarter }}</strong>{% endif %}
+                    {% if selected_quarter and selected_cluster %} &middot; {% endif %}
+                    {% if selected_cluster %}<strong>{{ selected_cluster }}</strong>{% endif %}
+                    {% if selected_funder and selected_quarter or selected_funder and selected_cluster %} &middot; {% endif %}
+                    {% if selected_funder %}<strong>{{ selected_funder }}</strong>{% endif %}.
+                    Try adjusting or clearing the filters to see more data.
+                </p>
+                <a href="{% url 'dashboards:dashboard' %}" class="btn btn-primary">
+                    <i class="bi bi-x-circle me-2"></i>Clear Filters
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Empty State: no activities in the system at all -->
 <div class="row justify-content-center">
     <div class="col">
         <div class="card border-0 shadow-sm">
@@ -40,6 +69,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 {% else %}
 <!-- Page Header + Stats in one row -->
 <div class="page-header">
@@ -109,7 +139,7 @@
 
 
 <!-- Filters bar -->
-<!-- <div class="mb-3 px-3 py-2 d-flex align-items-center gap-3 flex-wrap" style="background: #fff; border-radius: .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);">
+<div class="mb-3 px-3 py-2 d-flex align-items-center gap-3 flex-wrap" style="background: #fff; border-radius: .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);">
     <form method="get" id="dashboard-filter-form" class="d-flex align-items-center gap-3 flex-wrap w-100">
 
         <div class="d-flex align-items-center gap-2">
@@ -155,13 +185,13 @@
 
         {% if selected_quarter or selected_cluster or selected_funder %}
         <div class="vr d-none d-sm-block" style="opacity:.15;"></div>
-        <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary text-nowrap" style="font-size:.75rem;">
+        <a href="{% url 'dashboards:dashboard' %}" class="btn btn-sm btn-outline-secondary text-nowrap" style="font-size:.75rem;">
             <i class="bi bi-x-circle me-1"></i>Clear
         </a>
         {% endif %}
 
     </form>
-</div> -->
+</div>
 
 <!-- Dashboard Tabs -->
 <div style="background:#fff; border-radius:.5rem; padding: .375rem .75rem 0; box-shadow: 0 1px 3px rgba(0,0,0,.06);">

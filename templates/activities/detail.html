@@ -146,8 +146,7 @@
                         </button>
                         {% endif %}
                     </label>
-                    <p class="detail-value mb-0" id="notes-display">{{ activity.notes|linebreaksbr|default:"No notes
-                        provided" }}</p>
+                    <p class="detail-value mb-0" id="notes-display">{{ activity.notes|linebreaksbr|default:"No notes provided" }}</p>
                 </div>
             </div>
         </div>
@@ -166,10 +165,8 @@
                     {% for attachment in activity.attachments.all %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
-                            <a href="{{ attachment.file.url }}" target="_blank">{{
-                                attachment.file.name|cut:"activity_attachments/" }}</a>
-                            <small class="d-block text-muted">Uploaded on {{ attachment.uploaded_at|date:"d M Y"
-                                }}</small>
+                            <a href="{{ attachment.file.url }}" target="_blank">{{ attachment.file.name|cut:"activity_attachments/" }}</a>
+                            <small class="d-block text-muted">Uploaded on {{ attachment.uploaded_at|date:"d M Y" }}</small>
                         </div>
                         <form method="post" action="{% url 'delete_attachment' attachment.pk %}">
                             {% csrf_token %}
@@ -211,8 +208,7 @@
                                         <h6 class="mb-1">{{ log.action }}</h6>
                                         <p class="text-muted small mb-1">{{ log.change_description }}</p>
                                         <small class="text-muted">
-                                            <i class="bi bi-person me-1"></i>{{
-                                            log.user.get_full_name|default:log.user.username }}
+                                            <i class="bi bi-person me-1"></i>{{ log.user.get_full_name|default:log.user.username }}
                                             <i class="bi bi-clock ms-2 me-1"></i>{{ log.timestamp|date:"d M Y, H:i" }}
                                         </small>
                                     </div>
@@ -239,25 +235,16 @@
             <div class="card-body">
                 <div class="detail-group mb-3">
                     <label class="detail-label">Total Budget</label>
-                    <p class="detail-value mb-0 fs-5">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.total_budget|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0 fs-5">{{ activity.currency.code|default:"ZMK" }} {{ activity.total_budget|floatformat:2|intcomma|default:"0" }}</p>
                 </div>
                 <div class="detail-group {% if activity.procurement_breakdowns %}mb-3{% endif %}">
                     <label class="detail-label">Disbursed Amount</label>
-                    <p class="detail-value mb-0">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.disbursed_amount|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0">{{ activity.currency.code|default:"ZMK" }} {{ activity.disbursed_amount|floatformat:2|intcomma|default:"0" }}</p>
                 </div>
                 {% if activity.procurement_breakdowns %}
                 <div class="detail-group">
                     <label class="detail-label">Procurement Total</label>
-                    <p class="detail-value mb-0 text-primary">
-                        {{ activity.currency.code|default:"ZMK" }} {{
-                        activity.procurement_amount|floatformat:2|intcomma|default:"0" }}
-                    </p>
+                    <p class="detail-value mb-0 text-primary">{{ activity.currency.code|default:"ZMK" }} {{ activity.procurement_amount|floatformat:2|intcomma|default:"0" }}</p>
                     <a href="{% url 'procurement_detail' activity.pk %}" class="btn btn-sm btn-warning mt-2">
                         <i class="bi bi-eye me-1"></i>View Details
                     </a>
@@ -307,9 +294,7 @@
                         {% else %}
                         Not specified
                         {% endif %}
-                    {% else %}
-                        <p class="detail-value mb-0">Not specified</p>
-                    {% endif %}
+                    </p>
                 </div>
                 <div class="detail-group mb-3">
                     <label class="detail-label">Quarter</label>
@@ -423,7 +408,7 @@
                         <select class="form-select" id="statusSelect" name="status" required>
                             <option value="">Select status...</option>
                             {% for status in all_statuses %}
-                            <option value="{{ status.id }}" {% if status.id==activity.status.id %}selected{% endif %}>
+                            <option value="{{ status.id }}" {% if status.id == activity.status.id %}selected{% endif %}>
                                 {{ status.name }}
                             </option>
                             {% endfor %}
@@ -459,8 +444,7 @@
                         <select class="form-select" id="officerSelect" name="responsible_officer">
                             <option value="">Not assigned</option>
                             {% for user in all_users %}
-                            <option value="{{ user.id }}" {% if activity.responsible_officer and
-                                user.id==activity.responsible_officer.id %}selected{% endif %}>
+                            <option value="{{ user.id }}" {% if activity.responsible_officer and user.id == activity.responsible_officer.id %}selected{% endif %}>
                                 {% if user.get_full_name %}
                                 {{ user.get_full_name }} ({{ user.username }})
                                 {% else %}
@@ -519,8 +503,8 @@
 
 <script>
     $(document).ready(function () {
-        const activityId = {{ activity.pk }
-    };
+        const activityId = {{ activity.pk }};
+
 
     // Initialize Select2 for officer selection
     $('#officerSelect').select2({
