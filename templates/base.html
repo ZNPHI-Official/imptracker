@@ -60,6 +60,15 @@
   </head>
   
   <body class="d-flex flex-column min-vh-100" style="background-color: #CECECE;">
+
+    <!-- Page load spinner -->
+    <div id="pageSpinner" style="position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,0.82);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .25s ease;">
+      <div class="spinner-border" style="width:3rem;height:3rem;color:#1B8A51;" role="status">
+        <span class="visually-hidden">Loading…</span>
+      </div>
+      <p class="mt-3 mb-0 fw-semibold small" style="color:#1B8A51;">Loading…</p>
+    </div>
+
     <!-- Sticky Top Navigation -->
     <nav id="appNavbar" class="navbar navbar-expand-lg navbar-light sticky-top shadow-sm" style="background: #1B8A51 !important; z-index: 1060;">
       <div class="container-fluid px-3 px-md-4">
@@ -287,6 +296,61 @@
     </script>
     </script>
     
+    <script>
+    (function () {
+      var spinner = document.getElementById('pageSpinner');
+
+      function hide() {
+        spinner.style.opacity = '0';
+        setTimeout(function () { spinner.style.display = 'none'; }, 260);
+      }
+
+      function show() {
+        spinner.style.display = 'flex';
+        requestAnimationFrame(function () { spinner.style.opacity = '1'; });
+      }
+
+      // Hide once page content is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hide);
+      } else {
+        hide();
+      }
+
+      // Show spinner when navigating to another page via a regular link
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        if (
+          e.defaultPrevented ||
+          link.target === '_blank' ||
+          href.startsWith('#') ||
+          href.startsWith('javascript') ||
+          href.startsWith('mailto') ||
+          link.hasAttribute('data-bs-toggle') ||
+          link.hasAttribute('data-bs-dismiss') ||
+          link.hasAttribute('data-no-spinner')
+        ) return;
+        show();
+      });
+
+      // Show spinner on regular (non-AJAX) form submissions
+      document.addEventListener('submit', function (e) {
+        if (e.target.hasAttribute('data-no-spinner')) return;
+        // Skip forms handled via AJAX (they manage their own loading state)
+        var action = e.target.getAttribute('action') || '';
+        if (action.includes('upload') || action.includes('update-field')) return;
+        show();
+      });
+
+      // Hide if browser uses back/forward cache
+      window.addEventListener('pageshow', function (e) {
+        if (e.persisted) hide();
+      });
+    })();
+    </script>
+
     {% block page_js %}{% endblock %}
   </body>
 </html>

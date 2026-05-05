@@ -178,6 +178,14 @@ class Activity(models.Model):
     def get_sub_category_display_list(self):
         return list(self.sub_categories.values_list('name', flat=True))
 
+    def get_sub_categories_by_category(self):
+        """Returns [(category, [sub_categories])] sorted by category name."""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for sub in self.sub_categories.select_related('category').all():
+            groups[sub.category].append(sub)
+        return sorted(groups.items(), key=lambda x: x[0].name)
+
     def clean(self):
         # Validate numeric fields
         from django.core.exceptions import ValidationError

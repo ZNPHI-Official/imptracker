@@ -127,7 +127,7 @@
                     <p class="text-info mb-0 text-nowrap" style="font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;">
                         <i class="bi bi-cart me-1"></i>Procurements
                     </p>
-                    <p class="mb-0 fw-bold lh-1 text-nowrap" style="font-size: 1.05rem;">K{{ total_procurement_value|floatformat:2|default:0 }}</p>
+                    <p class="mb-0 fw-bold lh-1 text-nowrap" style="font-size: 1.05rem;">K{{ total_procurement_value|intcomma|default:0 }}</p>
                     <p class="text-muted mb-0 text-nowrap" style="font-size: .65rem;">{{ procurement_activities_count|default:0 }} procurements</p>
                 </div>
             </a>

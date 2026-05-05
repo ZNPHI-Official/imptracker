@@ -287,15 +287,31 @@
                 <div class="detail-group mb-3">
                     <label class="detail-label">Category</label>
                     <p class="detail-value mb-0">
-                        {% if activity.category %}
-                        {% for category_label in activity.get_category_display_list %}
-                        <span class="badge bg-info me-1">{{ category_label }}</span>
-                        {% endfor %}
+                        {% with cats=activity.get_category_display_list %}
+                        {% if cats %}
+                        {% for cat in cats %}<span class="badge bg-info me-1">{{ cat }}</span>{% endfor %}
                         {% else %}
-                        Not specified
+                        <span class="text-muted">Not specified</span>
                         {% endif %}
+                        {% endwith %}
                     </p>
                 </div>
+                {% with grouped_subs=activity.get_sub_categories_by_category %}
+                {% if grouped_subs %}
+                <div class="detail-group mb-3">
+                    <label class="detail-label">Sub Categories</label>
+                    <div class="detail-value mb-0">
+                        {% for parent_cat, subs in grouped_subs %}
+                        <div class="mb-2">
+                            <small class="text-muted fw-semibold d-block mb-1" style="font-size:.75rem;letter-spacing:.03em;">{{ parent_cat.name }}</small>
+                            {% for sub in subs %}<span class="badge bg-secondary me-1">{{ sub.name }}</span>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+
                 <div class="detail-group mb-3">
                     <label class="detail-label">Quarter</label>
                     <p class="detail-value mb-0">{{ activity.quarter|default:"Not specified" }}</p>
