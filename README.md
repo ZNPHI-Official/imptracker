@@ -44,6 +44,8 @@ ImpTracker is a Django/PostgreSQL web app for multi-year activity planning, proc
 - Recurring activities generation: `python manage.py generate_recurring_activities --months=3`
 - Due date alerts: `python manage.py send_due_date_alerts --days=7`
 
+- PULL MIGRATIONS MADE IN DOCKER INTO FILES: `docker cp django_web:/app/activities/migrations/0017_sync_missing_fields.py ./activities/migrations/`
+
 ## SSL Setup & Renewal
 - Initial issuance via certbot command above.
 - Renewal handled by `certbot` service (webroot `/var/www/certbot`, certs in `certbot-conf` volume).

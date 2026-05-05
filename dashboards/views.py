@@ -164,8 +164,14 @@ def dashboard(request):
     total_procurement_value = 0
     for activity in procurement_activities:
         if activity.procurement_breakdowns:
-            for item in activity.procurement_breakdowns:
-                total_procurement_value += float(item.get('amount', 0) or 0)
+            # for item in activity.procurement_breakdowns:
+            #     total_procurement_value += float(item.get('amount', 0) or 0)
+
+            for item in activity.procurement_breakdowns or []:
+                try:
+                    total_procurement_value += float(item.get('amount', 0) or 0)
+                except (TypeError, ValueError):
+                    continue
     
     totals = qs.aggregate(total_budget=Sum('total_budget'), total_disbursed=Sum('disbursed_amount'))
     total_budget = float(totals.get('total_budget') or 0)
@@ -297,7 +303,8 @@ def dashboard(request):
 
     _pva_quarters = sorted(
         set(list(_pva_plan.keys()) + list(_pva_actual.keys())),
-        key=lambda x: (int(x.split()[1]), int(x[1]))
+        #key=lambda x: (int(x.split()[1]), int(x[1]))
+        key=lambda x: (int(x.split()[1]), int(x.split()[0][1:]))
     )
 
     activity_planned_vs_actual = json.dumps({
@@ -340,7 +347,15 @@ def dashboard(request):
     })
     # ---- End planned vs actual aggregation --------------------------------------
 
-    month_labels = [f'{item.get("planned_month__year")}-{item.get("planned_month__month"):02d}' for item in by_month if item.get("planned_month__year")]
+    # month_labels = [f'{item.get("planned_month__year")}-{item.get("planned_month__month"):02d}' for item in by_month if item.get("planned_month__year")]
+    month_labels = []
+    for item in by_month:
+        year = item.get("planned_month__year")
+        month = item.get("planned_month__month")
+
+        if year and month:
+            month_labels.append(f"{year}-{int(month):02d}")
+
     month_disbursed = [float(item.get('total_disbursed') or 0) for item in by_month if item.get("planned_month__year")]
     
     # Calculate cumulative disbursement for burn rate
@@ -384,7 +399,8 @@ def dashboard(request):
 
     _sorted_quarters = sorted(
         _quarter_stage_counts.keys(),
-        key=lambda x: (int(x.split()[1]), int(x[1]))
+        # key=lambda x: (int(x.split()[1]), int(x[1]))
+        key=lambda x: (int(x.split()[1]), int(x.split()[0][1:]))
     )
 
     procurement_stage_timeline_data = json.dumps({
@@ -449,7 +465,8 @@ def dashboard(request):
             _all_statuses_for_const.append(_sn)
     _const_quarters_sorted = sorted(
         _const_quarter_status.keys(),
-        key=lambda x: (int(x.split()[1]), int(x[1]))
+        # key=lambda x: (int(x.split()[1]), int(x[1]))
+        key=lambda x: (int(x.split()[1]), int(x.split()[0][1:]))
     )
 
     construction_timeline_data = json.dumps({
