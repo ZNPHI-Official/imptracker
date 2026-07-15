@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.db.models import Sum, Count, Q
 from activities.models import Activity
@@ -815,8 +816,21 @@ def my_space(request):
     )
     # Latest request per activity, for the transport column on activity tables.
     latest_request_by_activity = {}
+    # Existing pending/approved requests per activity, so the quick-request
+    # modal can warn about duplicates before the user submits another.
+    existing_requests_by_activity = {}
     for tr in activity_requests:
         latest_request_by_activity.setdefault(tr.activity_id, tr)
+        if tr.status in ('Submitted', 'Approved') and tr.activity_id not in existing_requests_by_activity:
+            existing_requests_by_activity[str(tr.activity_id)] = {
+                'status': tr.status,
+                'requester': tr.requester_name,
+                'dates': f'{tr.period_from.strftime("%d %b %Y")} – {tr.period_to.strftime("%d %b %Y")}',
+                'destination': f'{tr.destination}, {tr.district.name}',
+                'num_vehicles': tr.num_vehicles,
+                'submitted_on': tr.created_at.strftime('%d %b %Y'),
+                'detail_url': reverse('bookings:request_detail', args=[tr.pk]),
+            }
 
     my_requests = (
         TransportRequest.objects
@@ -857,6 +871,7 @@ def my_space(request):
         'provinces': Province.objects.all() if has_fleet_access else [],
         'modal_activities': qs.order_by('-year', 'activity_id') if has_fleet_access else [],
         'user_clusters': list(request.user.clusters.all()) if has_fleet_access else [],
+        'existing_requests_map': existing_requests_by_activity,
     }
 
     return render(request, 'dashboards/my_space.html', context)

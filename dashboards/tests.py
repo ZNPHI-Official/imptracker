@@ -75,6 +75,33 @@ class MySpaceFleetIntegrationTest(TestCase):
         self.assertNotContains(response, 'transportRequestModal')
         self.assertNotContains(response, 'My Transport Requests')
 
+    def _existing_requests_map(self, response):
+        """Parse the json_script payload the modal reads for duplicate warnings."""
+        import json
+        content = response.content.decode()
+        marker = 'id="existing-requests-data"'
+        i = content.find(marker)
+        start = content.find('>', i) + 1
+        end = content.find('</script>', start)
+        return json.loads(content[start:end])
+
+    def test_duplicate_warning_data_for_pending_request(self):
+        self.make_request(status='Submitted')
+        response = self.client.get(self.url)
+        data = self._existing_requests_map(response)
+        self.assertIn(str(self.activity.pk), data)
+        self.assertEqual(data[str(self.activity.pk)]['status'], 'Submitted')
+
+    def test_duplicate_warning_data_for_approved_request(self):
+        self.make_request(status='Approved')
+        data = self._existing_requests_map(self.client.get(self.url))
+        self.assertEqual(data[str(self.activity.pk)]['status'], 'Approved')
+
+    def test_no_duplicate_data_for_completed_request(self):
+        self.make_request(status='Completed')
+        data = self._existing_requests_map(self.client.get(self.url))
+        self.assertNotIn(str(self.activity.pk), data)
+
     def test_balance_column_subtracts_disbursed(self):
         self.activity.disbursed_amount = 2000
         self.activity.save()
