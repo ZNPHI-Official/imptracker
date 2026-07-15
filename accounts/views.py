@@ -44,6 +44,16 @@ def app_switcher(request):
     })
 
 
+def grouped_roles():
+    """Split all groups into Implementation Tracker, Fleet Manager, and other
+    roles so user forms can present them as separate sections."""
+    all_roles = list(Group.objects.all().order_by('name'))
+    tracker = [r for r in all_roles if r.name in TRACKER_GROUPS]
+    fleet = [r for r in all_roles if r.name in FLEET_GROUPS]
+    other = [r for r in all_roles if r.name not in TRACKER_GROUPS and r.name not in FLEET_GROUPS]
+    return tracker, fleet, other
+
+
 def can_manage_users(user):
     """Check if user can manage users: superuser, staff, or in User Manager/System Admin groups"""
     return user.is_superuser or user.is_staff or user.groups.filter(name__in=['User Manager', 'System Admin']).exists()
@@ -184,12 +194,14 @@ def user_create(request):
         messages.success(request, f'User "{username}" created successfully.')
         return redirect('accounts:user_list')
     
-    roles = Group.objects.all().order_by('name')
+    tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
     funders = Funder.objects.filter(active=True).order_by('name')
     context = {
-        'roles': roles,
+        'tracker_roles': tracker_roles,
+        'fleet_roles': fleet_roles,
+        'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
     }
@@ -251,17 +263,19 @@ def user_edit(request, pk):
         messages.success(request, f'User "{user.username}" updated successfully.')
         return redirect('accounts:user_list')
     
-    roles = Group.objects.all().order_by('name')
+    tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
     funders = Funder.objects.filter(active=True).order_by('name')
     user_role_ids = list(user.groups.values_list('id', flat=True))
     user_cluster_ids = list(user.clusters.values_list('id', flat=True))
     user_coordinated_funder_id = user.coordinated_funder.id if user.coordinated_funder else None
-    
+
     context = {
         'user_obj': user,
-        'roles': roles,
+        'tracker_roles': tracker_roles,
+        'fleet_roles': fleet_roles,
+        'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
         'user_role_ids': user_role_ids,
