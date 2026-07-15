@@ -386,7 +386,7 @@
 {% if has_fleet_access %}
 <!-- Quick Transport Request Modal -->
 <div class="modal fade" id="transportRequestModal" tabindex="-1" aria-labelledby="transportRequestModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <form method="post" action="{% url 'bookings:request_create' %}">
         {% csrf_token %}
@@ -394,7 +394,7 @@
           <h5 class="modal-title" id="transportRequestModalLabel"><i class="bi bi-truck me-2"></i>Request Transport</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
           <div class="row g-3">
             <div class="col-md-8">
               <label class="form-label">Programme / Activity <span class="text-danger">*</span></label>
