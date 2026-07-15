@@ -142,6 +142,30 @@
                 </div>
             </div>
 
+            {% if is_edit %}
+                {% if user_obj.is_superuser or user_obj.is_staff %}
+                <div class="alert alert-warning py-2">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    This account has elevated flags
+                    ({% if user_obj.is_superuser %}Superuser{% endif %}{% if user_obj.is_superuser and user_obj.is_staff %}, {% endif %}{% if user_obj.is_staff %}Staff{% endif %})
+                    that <strong>bypass role-based permissions</strong> across both applications.
+                </div>
+                {% endif %}
+                {% if request.user.is_superuser and user_obj.pk != request.user.pk %}
+                <div class="mb-3 border rounded p-3 bg-light">
+                    <div class="fw-semibold small text-uppercase text-secondary mb-2">Account flags (superusers only)</div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="is_staff" id="is_staff" {% if user_obj.is_staff %}checked{% endif %}>
+                        <label class="form-check-label" for="is_staff">Staff — can access the Django admin and manage users</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="is_superuser" id="is_superuser" {% if user_obj.is_superuser %}checked{% endif %}>
+                        <label class="form-check-label" for="is_superuser">Superuser — full access to everything, ignores all roles</label>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+
             <div class="d-flex justify-content-end">
                 <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary me-2">Cancel</a>
                 <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create User{% endif %}</button>

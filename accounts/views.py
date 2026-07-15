@@ -224,6 +224,12 @@ def user_edit(request, pk):
         user.last_name = (request.POST.get('last_name') or '').strip()
         user.is_active = request.POST.get('is_active') == 'on'
 
+        # Account flags bypass all role checks, so only superusers may change
+        # them, and never on their own account (prevents self-lockout).
+        if request.user.is_superuser and user.pk != request.user.pk:
+            user.is_staff = request.POST.get('is_staff') == 'on'
+            user.is_superuser = request.POST.get('is_superuser') == 'on'
+
         if not user.email:
             messages.error(request, 'Email is required.')
             return redirect('accounts:user_edit', pk=pk)
