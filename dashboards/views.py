@@ -847,6 +847,13 @@ def my_space(request):
     for activity in recent_assigned:
         activity.latest_transport_request = latest_request_by_activity.get(activity.pk)
 
+    # Split so the quarter activities and the "other" activities don't overlap.
+    def _in_current_quarter(a):
+        return a.quarter == current_quarter and a.year == today.year
+
+    quarter_activities = [a for a in recent_assigned if _in_current_quarter(a)]
+    other_activities = [a for a in recent_assigned if not _in_current_quarter(a)]
+
     context = {
         'today': today,
         'current_quarter': current_quarter,
@@ -863,6 +870,9 @@ def my_space(request):
         'due_quarter_disbursed': sum_money(due_quarter_qs, 'disbursed_amount'),
         'due_quarter_remaining': sum_money(due_quarter_qs, 'total_budget') - sum_money(due_quarter_qs, 'disbursed_amount'),
         'recent_assigned': recent_assigned,
+        'quarter_activities': quarter_activities,
+        'other_activities': other_activities,
+        'other_assigned_count': len(other_activities),
         # Fleet integration
         'has_fleet_access': has_fleet_access,
         'my_transport_requests': my_requests[:8],

@@ -9,7 +9,7 @@
 {% block content %}
 <style>
   .ms-page { --ms-green:#1B8A51; --ms-blue:#2563eb; --ms-teal:#0d9488; --ms-amber:#d97706; }
-  .ms-page .ms-card { background:#fff; border:1px solid #edeff2; border-radius:14px;
+  .ms-page .ms-card { background:#fff; border:1px solid #edeff2; border-radius:14px; overflow:hidden;
     box-shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06); }
   .ms-page .ms-card-head { display:flex; align-items:center; justify-content:space-between;
     gap:.75rem; padding:.9rem 1.1rem; border-bottom:1px solid #f1f3f5; }
@@ -196,11 +196,13 @@
         <div class="table-responsive">
           <table class="table ms-table table-hover align-middle">
             <thead>
-              <tr><th>ID</th><th>Name</th><th>Planned</th><th>Status</th><th>Budget (K)</th><th>Disbursed (K)</th></tr>
+              <tr>
+                <th>ID</th><th>Name</th><th>Planned</th><th>Status</th><th>Budget (K)</th><th>Disbursed (K)</th>
+                {% if has_fleet_access %}<th>Transport</th>{% endif %}
+              </tr>
             </thead>
             <tbody>
-            {% for activity in recent_assigned %}
-              {% if activity.quarter == current_quarter and activity.year == today.year %}
+            {% for activity in quarter_activities %}
               <tr class="row-link" onclick="window.location='{% url 'activity_detail' activity.pk %}';">
                 <td class="id-cell">{{ activity.activity_id }}</td>
                 <td>{{ activity.name|truncatewords:6 }}</td>
@@ -208,10 +210,31 @@
                 <td><span class="badge bg-secondary-subtle text-secondary-emphasis">{{ activity.status.name }}</span></td>
                 <td class="money-cell">K{{ activity.total_budget|intcomma }}</td>
                 <td class="money-cell text-success">K{{ activity.disbursed_amount|default:0|intcomma }}</td>
+                {% if has_fleet_access %}
+                <td onclick="event.stopPropagation();">
+                  {% with tr=activity.latest_transport_request %}
+                  {% if tr %}
+                    <a href="{% url 'bookings:request_detail' tr.pk %}" class="text-decoration-none" title="{{ tr.period_from|date:'d M' }} – {{ tr.period_to|date:'d M Y' }}, {{ tr.district.name }}">
+                      {% if tr.status == 'Approved' %}<span class="badge bg-success-subtle text-success-emphasis"><i class="bi bi-truck me-1"></i>Approved</span>
+                      {% elif tr.status == 'Submitted' %}<span class="badge bg-warning-subtle text-warning-emphasis"><i class="bi bi-truck me-1"></i>Submitted</span>
+                      {% elif tr.status == 'Rejected' %}<span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-truck me-1"></i>Rejected</span>
+                      {% elif tr.status == 'In Progress' %}<span class="badge bg-info-subtle text-info-emphasis"><i class="bi bi-truck me-1"></i>In Progress</span>
+                      {% elif tr.status == 'Completed' %}<span class="badge bg-secondary-subtle text-secondary-emphasis"><i class="bi bi-truck me-1"></i>Completed</span>
+                      {% else %}<span class="badge bg-dark-subtle text-dark"><i class="bi bi-truck me-1"></i>{{ tr.status }}</span>{% endif %}
+                    </a>
+                  {% else %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary request-transport-btn"
+                            data-activity-pk="{{ activity.pk }}" data-bs-toggle="modal" data-bs-target="#transportRequestModal"
+                            title="Request transport for this activity">
+                      <i class="bi bi-truck"></i>
+                    </button>
+                  {% endif %}
+                  {% endwith %}
+                </td>
+                {% endif %}
               </tr>
-              {% endif %}
             {% empty %}
-              <tr><td colspan="6" class="empty-state">No activities planned for this quarter.</td></tr>
+              <tr><td colspan="{% if has_fleet_access %}7{% else %}6{% endif %}" class="empty-state">No activities planned for this quarter.</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -342,9 +365,9 @@
     <div class="ms-card-head">
       <h2 class="ms-card-title">
         <span class="ms-chip" style="background:rgba(100,116,139,.14); color:#475569;"><i class="bi bi-list-task"></i></span>
-        All Assigned Activities
+        Other Assigned Activities
       </h2>
-      <span class="ms-count">{{ total_assigned }} total</span>
+      <span class="ms-count">{{ other_assigned_count }} {{ other_assigned_count|pluralize:"activity,activities" }}</span>
     </div>
     <div class="table-responsive">
       <table class="table ms-table table-hover align-middle">
@@ -356,7 +379,7 @@
           </tr>
         </thead>
         <tbody>
-        {% for activity in recent_assigned %}
+        {% for activity in other_activities %}
           <tr class="row-link" onclick="window.location='{% url 'activity_detail' activity.pk %}';">
             <td class="id-cell">{{ activity.activity_id }}</td>
             <td>{{ activity.name|truncatewords:9 }}</td>
@@ -392,8 +415,13 @@
           <tr>
             <td colspan="{% if has_fleet_access %}8{% else %}7{% endif %}" class="empty-state">
               <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+              {% if total_assigned %}
+              <strong>Nothing outside this quarter</strong>
+              <p class="mb-0">All your assigned activities are shown in Due This Quarter above.</p>
+              {% else %}
               <strong>No activities assigned yet</strong>
               <p class="mb-0">Create your first activity to get started.</p>
+              {% endif %}
             </td>
           </tr>
         {% endfor %}

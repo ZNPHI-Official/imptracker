@@ -102,6 +102,33 @@ class MySpaceFleetIntegrationTest(TestCase):
         data = self._existing_requests_map(self.client.get(self.url))
         self.assertNotIn(str(self.activity.pk), data)
 
+    def test_other_activities_excludes_current_quarter(self):
+        import datetime as _dt
+        from masters.models import ActivityStatus
+        today = _dt.date.today()
+        q = (today.month - 1) // 3 + 1
+        status = ActivityStatus.objects.get(name='Planned')
+        # Activity.save() derives quarter from planned_month, so use real dates:
+        # one in the current quarter and one in a different quarter.
+        this_q_month = (q - 1) * 3 + 1
+        other_q_month = ((q % 4) * 3) + 1  # first month of the next quarter
+        self.activity.planned_month = _dt.date(today.year, this_q_month, 1)
+        self.activity.year = today.year
+        self.activity.save()
+        other = Activity.objects.create(
+            activity_id='ACT-OTHER', name='Off-quarter work', year=today.year,
+            status=status, planned_month=_dt.date(today.year, other_q_month, 1),
+            total_budget=100, responsible_officer=self.user,
+        )
+        response = self.client.get(self.url)
+        quarter = response.context['quarter_activities']
+        other_list = response.context['other_activities']
+        self.assertIn(self.activity, quarter)
+        self.assertNotIn(self.activity, other_list)
+        self.assertIn(other, other_list)
+        self.assertNotIn(other, quarter)
+        self.assertContains(response, 'Other Assigned Activities')
+
     def test_balance_column_subtracts_disbursed(self):
         self.activity.disbursed_amount = 2000
         self.activity.save()
