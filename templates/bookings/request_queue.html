@@ -1,0 +1,92 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Request Queue — ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold">Request Queue</h1>
+        <p class="text-base-content/60 text-sm mt-1">
+            {% if requests %}
+            {{ requests|length }} request{{ requests|length|pluralize }}
+            {% else %}
+            No requests
+            {% endif %}
+        </p>
+    </div>
+    <a href="?show={{ current_show }}&amp;export=csv" class="btn btn-outline btn-sm">Export CSV</a>
+</div>
+
+<!-- Status filter tabs -->
+<div role="tablist" class="tabs tabs-boxed mb-4 w-fit">
+    <a role="tab" href="?show=all" class="tab {% if current_show == 'all' %}tab-active{% endif %}">
+        All <span class="badge badge-sm ml-1">{{ count_pending|add:count_approved }}</span>
+    </a>
+    <a role="tab" href="?show=pending" class="tab {% if current_show == 'pending' %}tab-active{% endif %}">
+        Pending <span class="badge badge-sm ml-1">{{ count_pending }}</span>
+    </a>
+    <a role="tab" href="?show=approved" class="tab {% if current_show == 'approved' %}tab-active{% endif %}">
+        Approved <span class="badge badge-sm ml-1">{{ count_approved }}</span>
+    </a>
+</div>
+
+{% if requests %}
+<div class="card bg-base-100 shadow">
+    <div class="overflow-x-auto">
+        <table class="table table-zebra">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Requester</th>
+                    <th>Department</th>
+                    <th>Destination</th>
+                    <th>Period</th>
+                    <th class="text-center">Vehicles</th>
+                    <th>Submitted</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in requests %}
+                <tr class="{% if req.is_emergency %}bg-error/5{% endif %}">
+                    <td>
+                        {% if req.status == 'Approved' %}
+                        <span class="badge badge-success badge-sm">Approved</span>
+                        {% else %}
+                        <span class="badge badge-warning badge-sm">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if req.is_emergency %}
+                        <span class="badge badge-error badge-sm">Emergency</span>
+                        {% else %}
+                        <span class="text-base-content/40 text-xs">Normal</span>
+                        {% endif %}
+                    </td>
+                    <td class="font-medium">{{ req.requester_name }}</td>
+                    <td class="text-sm text-base-content/70">{{ req.department.name }}</td>
+                    <td class="text-sm">{{ req.district.name }}, {{ req.province.name }}</td>
+                    <td class="text-sm whitespace-nowrap">{{ req.period_from }} → {{ req.period_to }}</td>
+                    <td class="text-center text-sm">{{ req.num_vehicles }}</td>
+                    <td class="text-sm text-base-content/60 whitespace-nowrap">{{ req.date_of_request }}</td>
+                    <td>
+                        <a href="{% url 'bookings:request_review' req.pk %}" class="btn btn-primary btn-xs">
+                            {% if req.status == 'Approved' %}Edit{% else %}Review →{% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body text-center py-16">
+        <p class="text-base-content/50 text-lg">All caught up.</p>
+        <p class="text-base-content/40 text-sm mt-1">No requests awaiting action.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -151,6 +151,19 @@
               </a>
             </li>
             {% endif %}
+
+            {% if is_requester or is_fleet_manager or is_dashboard_viewer or is_superadmin %}
+            <li class="nav-item">
+              <a class="nav-link fw-500" href="{% url 'fleet_home' %}">
+                <i class="bi bi-truck me-1"></i><span class="d-lg-inline d-md-none">Fleet</span>
+              </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+              <a class="nav-link fw-500" href="{% url 'app_switcher' %}" title="Switch application">
+                <i class="bi bi-grid-3x3-gap me-1"></i><span class="d-lg-inline d-md-none">Apps</span>
+              </a>
+            </li>
           </ul>
 
           <!-- User Dropdown (far right) -->

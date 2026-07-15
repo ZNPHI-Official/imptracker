@@ -1,0 +1,120 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Request #{{ transport_request.pk }} — ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <a href="{% url 'bookings:my_requests' %}" class="btn btn-ghost btn-sm mb-2">← My Requests</a>
+            <h1 class="text-2xl font-bold">{{ transport_request.programme_activity }}</h1>
+            <p class="text-base-content/60 text-sm mt-1">Request #{{ transport_request.pk }} · Submitted {{ transport_request.date_of_request }}</p>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+            {% if transport_request.status == 'Submitted' %}
+            <span class="badge badge-warning">Submitted</span>
+            {% elif transport_request.status == 'Approved' %}
+            <span class="badge badge-success">Approved</span>
+            {% elif transport_request.status == 'Rejected' %}
+            <span class="badge badge-error">Rejected</span>
+            {% elif transport_request.status == 'In Progress' %}
+            <span class="badge badge-info">In Progress</span>
+            {% elif transport_request.status == 'Completed' %}
+            <span class="badge badge-ghost">Completed</span>
+            {% elif transport_request.status == 'Cancelled' %}
+            <span class="badge badge-ghost text-base-content/40">Cancelled</span>
+            {% endif %}
+            {% if transport_request.is_emergency %}
+            <span class="badge badge-error badge-sm">Emergency</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if transport_request.is_late_booking and transport_request.status == 'Submitted' %}
+    <div role="alert" class="alert alert-warning mb-4 shadow">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <span><strong>Late booking:</strong> This trip starts in less than 2 weeks.</span>
+    </div>
+    {% endif %}
+
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-base font-semibold mb-2">Requester</h2>
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <dt class="text-base-content/60">Name</dt>
+                <dd class="font-medium">{{ transport_request.requester_name }}</dd>
+                <dt class="text-base-content/60">Position</dt>
+                <dd>{{ transport_request.position }}</dd>
+                <dt class="text-base-content/60">Department</dt>
+                <dd>{{ transport_request.department.name }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-base font-semibold mb-2">Trip</h2>
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <dt class="text-base-content/60">Period</dt>
+                <dd>{{ transport_request.period_from }} → {{ transport_request.period_to }}</dd>
+                <dt class="text-base-content/60">Province</dt>
+                <dd>{{ transport_request.province.name }}</dd>
+                <dt class="text-base-content/60">District</dt>
+                <dd>{{ transport_request.district.name }}</dd>
+                <dt class="text-base-content/60">Destination</dt>
+                <dd>{{ transport_request.destination }}</dd>
+                <dt class="text-base-content/60">Vehicles needed</dt>
+                <dd>{{ transport_request.num_vehicles }}</dd>
+                <dt class="text-base-content/60">Drivers needed</dt>
+                <dd>{{ transport_request.num_drivers }}</dd>
+                <dt class="text-base-content/60">Passengers</dt>
+                <dd>{{ transport_request.num_passengers }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    {% if transport_request.assignments.exists %}
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-base font-semibold mb-2">Assigned vehicles</h2>
+            <ul class="text-sm space-y-1">
+                {% for assignment in transport_request.assignments.all %}
+                <li>{{ assignment.vehicle }} — {{ assignment.driver }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if transport_request.admin_comment %}
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-base font-semibold mb-1">Fleet Manager comment</h2>
+            <p class="text-sm">{{ transport_request.admin_comment }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if transport_request.coordination_acknowledged %}
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-base font-semibold mb-1">Coordination note</h2>
+            <p class="text-sm text-base-content/60">The requester acknowledged a coordination opportunity.</p>
+            {% if transport_request.coordination_note %}
+            <p class="text-sm mt-2">{{ transport_request.coordination_note }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if transport_request.status not in "Completed,Cancelled" %}
+    <div class="flex justify-end">
+        <form method="post" action="{% url 'bookings:request_cancel' transport_request.pk %}"
+              onsubmit="return confirm('Cancel this request?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-error btn-sm btn-outline">Cancel request</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

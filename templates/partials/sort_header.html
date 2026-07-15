@@ -1,0 +1,17 @@
+{% comment %}
+Sortable table column header. Renders a <th> whose link toggles the sort
+direction for this column (or starts ascending when another column is active).
+Expects in context: current_sort, current_dir (from SortableListMixin).
+Params: label, key, and optional th_class for alignment (e.g. "text-right").
+{% endcomment %}
+<th class="{{ th_class }}">
+    <a href="?sort={{ key }}&amp;dir={% if current_sort == key and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+       class="inline-flex items-center gap-1 hover:text-base-content">
+        {{ label }}
+        {% if current_sort == key %}
+            <span aria-hidden="true">{% if current_dir == 'asc' %}↑{% else %}↓{% endif %}</span>
+        {% else %}
+            <span class="opacity-30" aria-hidden="true">↕</span>
+        {% endif %}
+    </a>
+</th>

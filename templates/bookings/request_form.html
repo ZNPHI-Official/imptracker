@@ -1,0 +1,221 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}New Transport Request — ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold">New Transport Request</h1>
+        <p class="text-base-content/60 text-sm mt-1">Complete all fields. The Fleet Manager will review your request.</p>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="alert alert-error mb-6">
+        {% for error in form.non_field_errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="card bg-base-100 shadow mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-base font-semibold mb-2">Requester Details</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% with field=form.requester_name %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'' }}"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+
+                    {% with field=form.position %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'' }}"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+                </div>
+
+                {% with field=form.department %}
+                <div class="form-control mt-2">
+                    <label class="label" for="{{ field.id_for_label }}">
+                        <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                    </label>
+                    <select id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                            class="select select-bordered {% if field.errors %}select-error{% endif %} w-full">
+                        <option value="">Select department…</option>
+                        {% for value, label in field.field.choices %}
+                        {% if value %}<option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>{% endif %}
+                        {% endfor %}
+                    </select>
+                    {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                </div>
+                {% endwith %}
+
+                {% with field=form.programme_activity %}
+                <div class="form-control mt-2">
+                    <label class="label" for="{{ field.id_for_label }}">
+                        <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                    </label>
+                    <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                           value="{{ field.value|default:'' }}"
+                           class="input input-bordered {% if field.errors %}input-error{% endif %} w-full"
+                           placeholder="Name of programme or activity">
+                    {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                </div>
+                {% endwith %}
+            </div>
+        </div>
+
+        <div class="card bg-base-100 shadow mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-base font-semibold mb-2">Trip Details</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% with field=form.period_from %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="date" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'' }}"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+
+                    {% with field=form.period_to %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="date" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'' }}"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {% with field=form.province %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">Province <span class="text-error">*</span></span>
+                        </label>
+                        <select id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                                class="select select-bordered {% if field.errors %}select-error{% endif %} w-full"
+                                hx-get="{% url 'bookings:district_options' %}"
+                                hx-trigger="change"
+                                hx-target="#id_district"
+                                hx-swap="innerHTML">
+                            <option value="">Select province…</option>
+                            {% for province in provinces %}
+                            <option value="{{ province.id }}" {% if field.value|stringformat:"s" == province.id|stringformat:"s" %}selected{% endif %}>{{ province.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+
+                    {% with field=form.district %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">District <span class="text-error">*</span></span>
+                        </label>
+                        <select id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                                class="select select-bordered {% if field.errors %}select-error{% endif %} w-full">
+                            <option value="">Select province first…</option>
+                            {% for district in field.field.queryset %}
+                            <option value="{{ district.id }}" {% if field.value|stringformat:"s" == district.id|stringformat:"s" %}selected{% endif %}>{{ district.name }}</option>
+                            {% endfor %}
+                        </select>
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+                </div>
+
+                {% with field=form.destination %}
+                <div class="form-control mt-4">
+                    <label class="label" for="{{ field.id_for_label }}">
+                        <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                    </label>
+                    <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                           value="{{ field.value|default:'' }}"
+                           class="input input-bordered {% if field.errors %}input-error{% endif %} w-full"
+                           placeholder="Specific location or address">
+                    {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                </div>
+                {% endwith %}
+
+                <div class="grid grid-cols-3 gap-4 mt-4">
+                    {% with field=form.num_vehicles %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'1' }}" min="1"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+
+                    {% with field=form.num_drivers %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'1' }}" min="1"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+
+                    {% with field=form.num_passengers %}
+                    <div class="form-control">
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                               value="{{ field.value|default:'1' }}" min="1"
+                               class="input input-bordered {% if field.errors %}input-error{% endif %} w-full">
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
+                    </div>
+                    {% endwith %}
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="cursor-pointer label justify-start gap-4">
+                        <input type="checkbox" name="{{ form.is_emergency.html_name }}"
+                               class="checkbox checkbox-error"
+                               {% if form.is_emergency.value %}checked{% endif %}>
+                        <span class="label-text font-medium">This is an emergency request</span>
+                    </label>
+                    <p class="text-xs text-base-content/50 ml-1">Emergency requests are flagged and shown first in the Fleet Manager queue.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'bookings:my_requests' %}" class="btn btn-ghost">Cancel</a>
+            <button type="submit" class="btn btn-primary">Submit Request</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ZNPHI Fleet Manager{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.2/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-base-200 min-h-screen">
+
+<div class="drawer">
+    <input id="nav-drawer" type="checkbox" class="drawer-toggle" />
+
+    <!-- ── Main content column ──────────────────────────────────────────── -->
+    <div class="drawer-content flex flex-col min-h-screen">
+
+        <!-- Navbar -->
+        <nav class="navbar bg-primary text-primary-content shadow-lg sticky top-0 z-50">
+            <div class="navbar-start">
+                {% if user.is_authenticated %}
+                <label for="nav-drawer" class="btn btn-ghost btn-sm lg:hidden mr-1" aria-label="Open menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 20h16"></path>
+                    </svg>
+                </label>
+                {% endif %}
+                <a href="{% url 'fleet_home' %}" class="btn btn-ghost text-lg font-bold tracking-wide">
+                    ZNPHI Fleet Manager
+                </a>
+            </div>
+
+            {% if user.is_authenticated %}
+            {% with vname=request.resolver_match.view_name %}
+            <div class="navbar-center hidden lg:flex">
+                <ul class="menu menu-horizontal gap-1 text-sm">
+                    {% if is_fleet_manager or is_superadmin %}
+                    <li>
+                        <a href="{% url 'bookings:request_queue' %}"
+                           class="font-medium {% if vname == 'bookings:request_queue' or vname == 'bookings:request_review' %}bg-black/10 rounded-lg{% endif %}">
+                            Request Queue
+                            {% if pending_request_count %}
+                            <span class="badge badge-warning badge-sm">{{ pending_request_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="{% url 'bookings:request_create' %}"
+                           class="font-medium {% if vname == 'bookings:request_create' or vname == 'bookings:coordination_nudge' %}bg-black/10 rounded-lg{% endif %}">
+                            New Request
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'bookings:my_requests' %}"
+                           class="font-medium {% if vname == 'bookings:my_requests' or vname == 'bookings:request_detail' %}bg-black/10 rounded-lg{% endif %}">
+                            My Requests
+                        </a>
+                    </li>
+                    {% if is_fleet_manager or is_dashboard_viewer or is_superadmin %}
+                    <li>
+                        <a href="{% url 'fleet:vehicle_list' %}"
+                           class="font-medium {% if 'fleet:vehicle' in vname %}bg-black/10 rounded-lg{% endif %}">
+                            Vehicles
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'fleet:driver_list' %}"
+                           class="font-medium {% if 'fleet:driver' in vname %}bg-black/10 rounded-lg{% endif %}">
+                            Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:gantt' %}"
+                           class="font-medium {% if vname == 'dashboard:gantt' %}bg-black/10 rounded-lg{% endif %}">
+                            Gantt
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'dashboard:dashboard' %}"
+                           class="font-medium {% if vname == 'dashboard:dashboard' %}bg-black/10 rounded-lg{% endif %}">
+                            Dashboard
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if is_fleet_manager or is_superadmin %}
+                    <li>
+                        <a href="{% url 'settings_app:settings' %}"
+                           class="font-medium {% if vname == 'settings_app:settings' %}bg-black/10 rounded-lg{% endif %}">
+                            Settings
+                        </a>
+                    </li>
+                    {% endif %}
+                    {# ImpTracker's user administration handles all user management now #}
+                    {% if user.is_superuser %}
+                    <li>
+                        <a href="{% url 'accounts:user_list' %}"
+                           class="font-medium {% if 'accounts:user' in vname %}bg-black/10 rounded-lg{% endif %}">
+                            User Management
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="{% url 'app_switcher' %}" class="font-medium">
+                            Apps
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% endwith %}
+            {% endif %}
+
+            <div class="navbar-end gap-2">
+                {% if user.is_authenticated %}
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                        <div class="avatar placeholder">
+                            <div class="bg-primary-content text-primary rounded-full w-9">
+                                <span class="text-sm font-bold select-none">
+                                    {{ user.username|slice:":2"|upper }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <ul tabindex="0" class="mt-3 z-[1] p-2 shadow-xl menu menu-sm dropdown-content bg-base-100 text-base-content rounded-box w-56 border border-base-300">
+                        <li class="menu-title">
+                            <span class="font-semibold text-base-content">{{ user.get_full_name|default:user.username }}</span>
+                        </li>
+                        <li class="menu-title">
+                            <span class="text-xs opacity-60">
+                                {% for group in user.groups.all %}{{ group.name }}{% empty %}No role assigned{% endfor %}
+                            </span>
+                        </li>
+                        <li class="mt-1">
+                            <form method="post" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full text-left text-error hover:bg-error hover:text-error-content rounded">
+                                    Sign out
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                {% else %}
+                <a href="{% url 'login' %}" class="btn btn-ghost btn-sm">Sign in</a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Flash messages -->
+        {% if messages %}
+        <div class="container mx-auto px-4 pt-4 max-w-6xl">
+            {% for message in messages %}
+            <div role="alert" class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-2 shadow">
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page content -->
+        <main class="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer footer-center p-4 bg-base-300 text-base-content text-xs">
+            <span>ZNPHI Fleet Manager &mdash; Zambia National Public Health Institute</span>
+        </footer>
+
+    </div><!-- end drawer-content -->
+
+    <!-- ── Mobile sidebar ───────────────────────────────────────────────── -->
+    <div class="drawer-side z-[100]">
+        <label for="nav-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <div class="bg-base-100 min-h-full w-72 flex flex-col shadow-xl">
+
+            <!-- Sidebar header -->
+            <div class="px-4 py-5 bg-primary text-primary-content">
+                <p class="font-bold text-base">ZNPHI Fleet Manager</p>
+                {% if user.is_authenticated %}
+                <p class="text-xs opacity-70 mt-0.5">
+                    {{ user.get_full_name|default:user.username }}
+                    &mdash; {% for group in user.groups.all %}{{ group.name }}{% empty %}No role{% endfor %}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar nav links -->
+            {% if user.is_authenticated %}
+            {% with vname=request.resolver_match.view_name %}
+            <ul class="menu p-3 w-full flex-1 text-base-content text-sm">
+                {% if is_fleet_manager or is_superadmin %}
+                <li>
+                    <a href="{% url 'bookings:request_queue' %}"
+                       class="{% if vname == 'bookings:request_queue' or vname == 'bookings:request_review' %}active{% endif %}">
+                        Request Queue
+                        {% if pending_request_count %}
+                        <span class="badge badge-warning badge-sm ml-auto">{{ pending_request_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endif %}
+                <li>
+                    <a href="{% url 'bookings:request_create' %}"
+                       class="{% if vname == 'bookings:request_create' or vname == 'bookings:coordination_nudge' %}active{% endif %}">
+                        New Request
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'bookings:my_requests' %}"
+                       class="{% if vname == 'bookings:my_requests' or vname == 'bookings:request_detail' %}active{% endif %}">
+                        My Requests
+                    </a>
+                </li>
+                {% if is_fleet_manager or is_dashboard_viewer or is_superadmin %}
+                <li class="menu-title mt-2"><span>Fleet</span></li>
+                <li>
+                    <a href="{% url 'fleet:vehicle_list' %}"
+                       class="{% if 'fleet:vehicle' in vname %}active{% endif %}">
+                        Vehicles
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'fleet:driver_list' %}"
+                       class="{% if 'fleet:driver' in vname %}active{% endif %}">
+                        Drivers
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:gantt' %}"
+                       class="{% if vname == 'dashboard:gantt' %}active{% endif %}">
+                        Gantt Chart
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'dashboard:dashboard' %}"
+                       class="{% if vname == 'dashboard:dashboard' %}active{% endif %}">
+                        Dashboard
+                    </a>
+                </li>
+                {% endif %}
+                {% if is_fleet_manager or is_superadmin %}
+                <li class="menu-title mt-2"><span>Admin</span></li>
+                <li>
+                    <a href="{% url 'settings_app:settings' %}"
+                       class="{% if vname == 'settings_app:settings' %}active{% endif %}">
+                        Settings
+                    </a>
+                </li>
+                {% endif %}
+                {% if user.is_superuser %}
+                <li>
+                    <a href="{% url 'accounts:user_list' %}"
+                       class="{% if 'accounts:user' in vname %}active{% endif %}">
+                        User Management
+                    </a>
+                </li>
+                {% endif %}
+                <li class="menu-title mt-2"><span>Applications</span></li>
+                <li>
+                    <a href="{% url 'app_switcher' %}">App Switcher</a>
+                </li>
+            </ul>
+            {% endwith %}
+            {% endif %}
+
+            <!-- Sidebar footer: sign out -->
+            {% if user.is_authenticated %}
+            <div class="p-4 border-t border-base-300">
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-error btn-sm w-full">Sign out</button>
+                </form>
+            </div>
+            {% endif %}
+
+        </div>
+    </div><!-- end drawer-side -->
+
+</div><!-- end drawer -->
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

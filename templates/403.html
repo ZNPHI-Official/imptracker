@@ -1,0 +1,19 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Access Denied — ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+<div class="hero py-16">
+    <div class="hero-content text-center">
+        <div>
+            <h1 class="text-5xl font-bold text-error">403</h1>
+            <h2 class="text-2xl font-semibold mt-2 text-base-content">Access Denied</h2>
+            <p class="mt-4 text-base-content/70 max-w-md">
+                You don't have permission to view this page. If you believe this is a mistake,
+                contact your administrator.
+            </p>
+            <a href="{% url 'app_switcher' %}" class="btn btn-primary mt-6">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,333 @@
+{% extends 'fleet_base.html' %}
+
+{% block title %}{{ vehicle.license_plate }} | ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="flex items-start justify-between mb-6">
+    <div>
+        <a href="{% url 'fleet:vehicle_list' %}" class="text-sm text-base-content/50 hover:text-base-content mb-1 inline-block">← Vehicles</a>
+        <h1 class="text-2xl font-bold text-base-content">
+            {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}
+        </h1>
+        <div class="flex items-center gap-2 mt-2">
+            <span class="font-mono text-sm text-base-content/60">{{ vehicle.license_plate }}</span>
+
+            {% if vehicle.status == 'Available' %}
+                <span class="badge badge-success">Available</span>
+            {% elif vehicle.status == 'On Trip' %}
+                <span class="badge badge-info">On Trip</span>
+            {% elif vehicle.status == 'In Maintenance' %}
+                <span class="badge badge-warning">In Maintenance</span>
+            {% else %}
+                <span class="badge badge-ghost">Emergency Standby</span>
+            {% endif %}
+
+            {% if vehicle.maintenance_status == 'green' %}
+                <span class="badge badge-outline badge-success text-xs">Service OK</span>
+            {% elif vehicle.maintenance_status == 'amber' %}
+                <span class="badge badge-outline badge-warning text-xs">Service Soon</span>
+            {% elif vehicle.maintenance_status == 'red' %}
+                <span class="badge badge-outline badge-error text-xs">Overdue</span>
+            {% else %}
+                <span class="badge badge-outline badge-ghost text-xs">No Service Record</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if can_edit %}
+    <a href="{% url 'fleet:vehicle_edit' vehicle.pk %}" class="btn btn-primary btn-sm">Edit Vehicle</a>
+    {% endif %}
+</div>
+
+<!-- Info grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+    <!-- Vehicle details -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body py-4 px-5">
+            <h2 class="card-title text-base mb-3">Vehicle Details</h2>
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <dt class="text-base-content/50">Type</dt>
+                <dd>{{ vehicle.vehicle_type }}</dd>
+                <dt class="text-base-content/50">Fuel</dt>
+                <dd>{{ vehicle.fuel_type }}</dd>
+                <dt class="text-base-content/50">Seats</dt>
+                <dd>{{ vehicle.seating_capacity }}</dd>
+                <dt class="text-base-content/50">Current Mileage</dt>
+                <dd class="font-mono font-semibold">{{ vehicle.current_mileage|floatformat:0 }} km</dd>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Maintenance status -->
+    <div class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body py-4 px-5">
+            <h2 class="card-title text-base mb-3">Maintenance Status</h2>
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <dt class="text-base-content/50">Service Interval</dt>
+                <dd class="font-mono">{{ vehicle.maintenance_interval_km|floatformat:0 }} km</dd>
+                <dt class="text-base-content/50">Last Service</dt>
+                <dd>
+                    {% if vehicle.last_service_date %}
+                        {{ vehicle.last_service_date|date:"d M Y" }}
+                        <span class="text-base-content/40 font-mono text-xs ml-1">@ {{ vehicle.last_service_mileage|floatformat:0 }} km</span>
+                    {% else %}
+                        <span class="text-base-content/30">No record</span>
+                    {% endif %}
+                </dd>
+                <dt class="text-base-content/50">Km to Next Service</dt>
+                <dd>
+                    {% if vehicle.km_until_service is not None %}
+                        {% if vehicle.maintenance_status == 'red' %}
+                            <span class="text-error font-semibold font-mono">{{ vehicle.km_until_service }} km (overdue)</span>
+                        {% elif vehicle.maintenance_status == 'amber' %}
+                            <span class="text-warning font-semibold font-mono">{{ vehicle.km_until_service }} km</span>
+                        {% else %}
+                            <span class="font-mono">{{ vehicle.km_until_service }} km</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-base-content/30">—</span>
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming trips -->
+{% if upcoming_trips %}
+<div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body py-4 px-5">
+        <h2 class="card-title text-base mb-3">Upcoming Trips</h2>
+        <div class="overflow-x-auto">
+            <table class="table table-sm w-full">
+                <thead>
+                    <tr class="text-xs text-base-content/50 uppercase">
+                        <th>Period</th>
+                        <th>Destination</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in upcoming_trips %}
+                    <tr>
+                        <td class="font-mono text-sm whitespace-nowrap">
+                            {{ assignment.transport_request.period_from|date:"d M" }} – {{ assignment.transport_request.period_to|date:"d M Y" }}
+                        </td>
+                        <td class="text-sm">
+                            {{ assignment.transport_request.destination }}, {{ assignment.transport_request.district }}
+                        </td>
+                        <td class="text-sm">{{ assignment.transport_request.department }}</td>
+                        <td>
+                            {% with s=assignment.transport_request.status %}
+                            {% if s == 'Approved' %}
+                                <span class="badge badge-info badge-sm">Approved</span>
+                            {% elif s == 'In Progress' %}
+                                <span class="badge badge-success badge-sm">In Progress</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Fuel Log -->
+<div id="fuel-section" class="card bg-base-100 shadow-sm border border-base-300 mb-6">
+    <div class="card-body py-4 px-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">Fuel Log</h2>
+            <a href="{% url 'fleet:fuel_records_export' vehicle.pk %}" class="btn btn-outline btn-xs">Export CSV</a>
+        </div>
+
+        {% if fuel_records %}
+        <div class="overflow-x-auto mb-4">
+            <table class="table table-sm w-full">
+                <thead>
+                    <tr class="text-xs text-base-content/50 uppercase">
+                        <th>Date</th>
+                        <th>Location</th>
+                        <th class="text-right">Litres</th>
+                        <th class="text-right">Cost/L</th>
+                        <th class="text-right">Total</th>
+                        <th class="text-right">Mileage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in fuel_records %}
+                    <tr>
+                        <td class="text-sm whitespace-nowrap">{{ record.date|date:"d M Y" }}</td>
+                        <td class="text-sm">{{ record.location }}</td>
+                        <td class="text-right font-mono text-sm">{{ record.liters }}</td>
+                        <td class="text-right font-mono text-sm">K{{ record.cost_per_liter }}</td>
+                        <td class="text-right font-mono text-sm font-medium">K{{ record.total_cost }}</td>
+                        <td class="text-right font-mono text-sm">{{ record.mileage_at_fillup|floatformat:0 }} km</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-base-content/40 mb-4">No fuel records yet.</p>
+        {% endif %}
+
+        {% if can_edit %}
+        <div class="divider text-xs text-base-content/40 my-2">Add Fuel Record</div>
+        {% if active_section == 'fuel' and fuel_form.errors %}
+        <div role="alert" class="alert alert-error alert-sm mb-3 py-2 text-sm">
+            Please correct the errors below.
+        </div>
+        {% endif %}
+        <form method="post" action="{% url 'fleet:fuel_record_add' vehicle.pk %}">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Date</span></div>
+                    {{ fuel_form.date }}
+                    {% if fuel_form.date.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.date.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Location</span></div>
+                    {{ fuel_form.location }}
+                    {% if fuel_form.location.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.location.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Mileage at Fillup (km)</span></div>
+                    {{ fuel_form.mileage_at_fillup }}
+                    {% if fuel_form.mileage_at_fillup.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.mileage_at_fillup.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Litres</span></div>
+                    {{ fuel_form.liters }}
+                    {% if fuel_form.liters.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.liters.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Cost per Litre (K)</span></div>
+                    {{ fuel_form.cost_per_liter }}
+                    {% if fuel_form.cost_per_liter.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.cost_per_liter.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Total Cost (K)</span></div>
+                    {{ fuel_form.total_cost }}
+                    {% if fuel_form.total_cost.errors %}<div class="text-error text-xs mt-1">{{ fuel_form.total_cost.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control col-span-2 md:col-span-3">
+                    <div class="label py-1"><span class="label-text text-xs">Notes (optional)</span></div>
+                    {{ fuel_form.notes }}
+                </label>
+            </div>
+            <div class="mt-3 flex justify-end">
+                <button type="submit" class="btn btn-primary btn-sm">Save Fuel Record</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Maintenance History -->
+<div id="maintenance-section" class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body py-4 px-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="card-title text-base">Maintenance History</h2>
+            <a href="{% url 'fleet:maintenance_records_export' vehicle.pk %}" class="btn btn-outline btn-xs">Export CSV</a>
+        </div>
+
+        {% if maintenance_records %}
+        <div class="overflow-x-auto mb-4">
+            <table class="table table-sm w-full">
+                <thead>
+                    <tr class="text-xs text-base-content/50 uppercase">
+                        <th>Date</th>
+                        <th>Service Type</th>
+                        <th>Vendor</th>
+                        <th class="text-right">Mileage</th>
+                        <th class="text-right">Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in maintenance_records %}
+                    <tr>
+                        <td class="text-sm whitespace-nowrap">{{ record.date|date:"d M Y" }}</td>
+                        <td class="text-sm">{{ record.service_type }}</td>
+                        <td class="text-sm">{{ record.vendor }}</td>
+                        <td class="text-right font-mono text-sm">{{ record.mileage_at_service|floatformat:0 }} km</td>
+                        <td class="text-right font-mono text-sm font-medium">K{{ record.cost }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-base-content/40 mb-4">No maintenance records yet.</p>
+        {% endif %}
+
+        {% if can_edit %}
+        <div class="divider text-xs text-base-content/40 my-2">Log Maintenance Service</div>
+        {% if active_section == 'maintenance' and maintenance_form.errors %}
+        <div role="alert" class="alert alert-error alert-sm mb-3 py-2 text-sm">
+            Please correct the errors below.
+        </div>
+        {% endif %}
+        {% if vehicle.status == 'In Maintenance' %}
+        <div role="alert" class="alert alert-warning alert-sm mb-3 py-2 text-sm">
+            This vehicle is currently In Maintenance. Logging a completed service will return it to Available.
+        </div>
+        {% endif %}
+        <form method="post" action="{% url 'fleet:maintenance_record_add' vehicle.pk %}">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Date</span></div>
+                    {{ maintenance_form.date }}
+                    {% if maintenance_form.date.errors %}<div class="text-error text-xs mt-1">{{ maintenance_form.date.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Service Type</span></div>
+                    {{ maintenance_form.service_type }}
+                    {% if maintenance_form.service_type.errors %}<div class="text-error text-xs mt-1">{{ maintenance_form.service_type.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Mileage at Service (km)</span></div>
+                    {{ maintenance_form.mileage_at_service }}
+                    {% if maintenance_form.mileage_at_service.errors %}<div class="text-error text-xs mt-1">{{ maintenance_form.mileage_at_service.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Vendor</span></div>
+                    {{ maintenance_form.vendor }}
+                    {% if maintenance_form.vendor.errors %}<div class="text-error text-xs mt-1">{{ maintenance_form.vendor.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control">
+                    <div class="label py-1"><span class="label-text text-xs">Cost (K)</span></div>
+                    {{ maintenance_form.cost }}
+                    {% if maintenance_form.cost.errors %}<div class="text-error text-xs mt-1">{{ maintenance_form.cost.errors.0 }}</div>{% endif %}
+                </label>
+                <label class="form-control col-span-2 md:col-span-3">
+                    <div class="label py-1"><span class="label-text text-xs">Notes (optional)</span></div>
+                    {{ maintenance_form.notes }}
+                </label>
+            </div>
+            <div class="mt-3 flex justify-end">
+                <button type="submit" class="btn btn-primary btn-sm">Log Maintenance</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if active_section %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var target = document.getElementById('{{ active_section }}-section');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+</script>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Home — ZNPHI Fleet Manager{% endblock %}
+
+{% block content %}
+<div class="hero py-16">
+    <div class="hero-content text-center">
+        <div>
+            <h1 class="text-4xl font-bold text-base-content">Welcome, {{ user.get_full_name|default:user.username }}</h1>
+            <p class="mt-4 text-base-content/70">
+                Your account has not been assigned a role yet.<br>
+                Please contact your administrator.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -10,6 +10,40 @@ import json
 
 from services.notifications import send_user_created_notification
 
+# Group names that grant access to each application on the post-login switcher.
+FLEET_GROUPS = ['Requester', 'Fleet Manager', 'Dashboard Viewer', 'Superadmin']
+TRACKER_GROUPS = ['System Admin', 'Data Manager', 'Activity Manager', 'Project Coordinator', 'Viewer', 'User Manager']
+
+
+def user_has_fleet_access(user):
+    """Check if user may enter the Fleet Manager app"""
+    return user.is_superuser or user.groups.filter(name__in=FLEET_GROUPS).exists()
+
+
+def user_has_tracker_access(user):
+    """Check if user may enter the Implementation Tracker app"""
+    return user.is_superuser or user.groups.filter(name__in=TRACKER_GROUPS).exists()
+
+
+@login_required
+def app_switcher(request):
+    """Post-login landing: pick between Implementation Tracker and Fleet Manager.
+
+    Users with access to exactly one app are sent straight into it; users with
+    access to both (or neither) see the switcher page.
+    """
+    has_tracker = user_has_tracker_access(request.user)
+    has_fleet = user_has_fleet_access(request.user)
+    if has_tracker and not has_fleet:
+        return redirect('dashboards:dashboard')
+    if has_fleet and not has_tracker:
+        return redirect('fleet_home')
+    return render(request, 'accounts/app_switcher.html', {
+        'has_tracker': has_tracker,
+        'has_fleet': has_fleet,
+    })
+
+
 def can_manage_users(user):
     """Check if user can manage users: superuser, staff, or in User Manager/System Admin groups"""
     return user.is_superuser or user.is_staff or user.groups.filter(name__in=['User Manager', 'System Admin']).exists()

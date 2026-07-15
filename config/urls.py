@@ -10,6 +10,8 @@ from dashboards import views as dashboard_views
 from django.contrib.auth import views as auth_views
 from activities import views as activities_views
 from ui import views as ui_views
+from accounts import views as accounts_views
+from bookings.views import FleetHomeView
 
 # Custom logout that handles GET requests and properly destroys session
 def logout_view(request):
@@ -19,7 +21,7 @@ def logout_view(request):
 # Root view - redirect authenticated users to dashboard, others to login
 def root_view(request):
     if request.user.is_authenticated:
-        return RedirectView.as_view(url='dashboard')(request)
+        return HttpResponseRedirect('/apps/')
     return auth_views.LoginView.as_view(template_name='registration/login.html')(request)
 
 urlpatterns = [
@@ -55,6 +57,16 @@ urlpatterns = [
 
 	# Settings (System Admin only)
 	path('settings/', ui_views.settings, name='settings'),
+
+	# App switcher (post-login landing)
+	path('apps/', accounts_views.app_switcher, name='app_switcher'),
+
+	# Fleet Manager (merged from ZNPHI-Fleet-Manager)
+	path('fleet/', FleetHomeView.as_view(), name='fleet_home'),
+	path('fleet/', include('fleet.urls')),
+	path('fleet/bookings/', include('bookings.urls')),
+	path('fleet/dashboard/', include('dashboard.urls')),
+	path('fleet/settings/', include('settings_app.urls')),
 
 	# Include app URLs
 	path('accounts/', include('accounts.urls')),
