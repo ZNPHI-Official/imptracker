@@ -27,18 +27,38 @@ def activity_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Activity)
 def activity_post_save(sender, instance, created, **kwargs):
-    user_repr = getattr(instance.responsible_officer, 'username', None) or 'system'
     if created:
-        AuditLog.objects.create(user=None, action='Activity created', object_repr=str(instance))
+        AuditLog.objects.create(
+            user=None,
+            activity_id=instance.pk,
+            action='Activity created',
+            object_repr=str(instance),
+        )
     else:
         prev = getattr(instance, '_pre_save_snapshot', None)
         if prev:
-            # detect status change
             if prev.get('status_id') != instance.status_id:
-                AuditLog.objects.create(user=None, action=f'Activity status changed from {prev.get("status_id")} to {instance.status_id}', object_repr=str(instance))
-            # detect name change
+                from masters.models import ActivityStatus
+                try:
+                    old_name = ActivityStatus.objects.get(pk=prev['status_id']).name
+                except ActivityStatus.DoesNotExist:
+                    old_name = str(prev['status_id'])
+                new_name = instance.status.name if instance.status_id else 'Unset'
+                AuditLog.objects.create(
+                    user=None,
+                    activity_id=instance.pk,
+                    action='Status changed',
+                    object_repr=str(instance),
+                    change_description=f'Changed from "{old_name}" to "{new_name}"',
+                )
             if prev.get('name') != instance.name:
-                AuditLog.objects.create(user=None, action='Activity name changed', object_repr=str(instance))
+                AuditLog.objects.create(
+                    user=None,
+                    activity_id=instance.pk,
+                    action='Activity name changed',
+                    object_repr=str(instance),
+                    change_description=f'Changed from "{prev["name"]}" to "{instance.name}"',
+                )
 
 
 # ============================================================================
