@@ -14,11 +14,18 @@
       <h1 class="display-5 fw-bold mb-1">My Space</h1>
       <p class="text-muted fs-5 mb-0">Personal activity dashboard for Q{{ current_quarter }}, {{ today|date:"Y" }}</p>
     </div>
-    {% if not request.user|has_role:"Viewer" %}
-    <a href="{% url 'create_activity' %}" class="btn btn-lg btn-primary">
-      <i class="bi bi-plus-circle me-2"></i>New Activity
-    </a>
-    {% endif %}
+    <div class="d-flex gap-2">
+      {% if has_fleet_access %}
+      <button type="button" class="btn btn-lg btn-outline-primary" data-bs-toggle="modal" data-bs-target="#transportRequestModal">
+        <i class="bi bi-truck me-2"></i>Request Transport
+      </button>
+      {% endif %}
+      {% if not request.user|has_role:"Viewer" %}
+      <a href="{% url 'create_activity' %}" class="btn btn-lg btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>New Activity
+      </a>
+      {% endif %}
+    </div>
   </div>
 
   <!-- Key Metrics Row -->
@@ -124,7 +131,7 @@
               <td><span class="badge bg-primary">{{ activity.status.name }}</span></td>
               <td>K{{ activity.total_budget|intcomma }}</td>
               <td><span class="text-success fw-bold">K{{ activity.disbursed_amount|default:0|intcomma }}</span></td>
-              <td><span class="badge bg-light text-dark">K{{ activity.total_budget|add:activity.disbursed_amount|default:0|intcomma }}</span></td>
+              <td><span class="badge bg-light text-dark">K{{ activity.balance|intcomma }}</span></td>
               <td><a href="{% url 'activity_detail' activity.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
             </tr>
             {% endif %}
@@ -213,12 +220,99 @@
 
         <div>
           <small class="text-muted d-block mb-2"><i class="bi bi-hourglass-split me-1"></i>Remaining</small>
-          <h4 class="mb-0 text-warning">K{{ due_quarter_budget|add:due_quarter_disbursed|default:0|intcomma }}</h4>
+          <h4 class="mb-0 text-warning">K{{ due_quarter_remaining|intcomma }}</h4>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+{% if has_fleet_access %}
+<!-- Transport Requests Section -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-truck me-2 text-primary"></i>My Transport Requests</h5>
+        <div>
+          <button type="button" class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#transportRequestModal">
+            <i class="bi bi-plus-lg me-1"></i>Request Transport
+          </button>
+          <a href="{% url 'bookings:my_requests' %}" class="btn btn-sm btn-outline-secondary">All my requests</a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Programme / Activity</th>
+                <th>Destination</th>
+                <th>Dates</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for tr in my_transport_requests %}
+              <tr>
+                <td>
+                  {% if tr.activity %}<span class="fw-bold">{{ tr.activity.activity_id }}</span> {{ tr.activity.name|truncatewords:6 }}
+                  {% else %}{{ tr.programme_activity|truncatewords:6 }} <span class="badge bg-light text-dark">Adhoc</span>{% endif %}
+                </td>
+                <td><small>{{ tr.destination|truncatewords:4 }}, {{ tr.district.name }}</small></td>
+                <td><small class="text-muted">{{ tr.period_from|date:"d M" }} – {{ tr.period_to|date:"d M Y" }}</small></td>
+                <td>
+                  {% if tr.status == 'Approved' %}<span class="badge bg-success">Approved</span>
+                  {% elif tr.status == 'Submitted' %}<span class="badge bg-warning text-dark">Submitted</span>
+                  {% elif tr.status == 'Rejected' %}<span class="badge bg-danger">Rejected</span>
+                  {% elif tr.status == 'In Progress' %}<span class="badge bg-info text-dark">In Progress</span>
+                  {% elif tr.status == 'Completed' %}<span class="badge bg-secondary">Completed</span>
+                  {% else %}<span class="badge bg-dark">{{ tr.status }}</span>{% endif %}
+                </td>
+                <td><a href="{% url 'bookings:request_detail' tr.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="bi bi-truck fs-3 d-block mb-2"></i>
+                  No transport requests yet — use <strong>Request Transport</strong> to book a vehicle for an activity.
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Trips Card -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bi bi-calendar-event me-2 text-success"></i>Upcoming Trips</h5>
+        <small class="text-muted">{{ upcoming_trip_count }} approved / in progress</small>
+      </div>
+      <div class="card-body">
+        {% for tr in upcoming_trips %}
+        <div class="d-flex align-items-start mb-3 {% if not forloop.last %}border-bottom pb-3{% endif %}">
+          <i class="bi bi-geo-alt text-success me-2 mt-1"></i>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ tr.destination|truncatewords:4 }}, {{ tr.district.name }}</div>
+            <small class="text-muted d-block">{{ tr.period_from|date:"d M" }} – {{ tr.period_to|date:"d M Y" }}</small>
+            {% if tr.activity %}<small class="text-muted">{{ tr.activity.activity_id }}</small>{% endif %}
+          </div>
+          <a href="{% url 'bookings:request_detail' tr.pk %}" class="btn btn-sm btn-link">Details</a>
+        </div>
+        {% empty %}
+        <p class="text-muted text-center py-4 mb-0">No upcoming trips.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- All Activities Section -->
 <div class="card border-0 shadow-sm">
@@ -238,6 +332,7 @@
             <th>Budget (K)</th>
             <th>Disbursed (K)</th>
             <th>Balance (K)</th>
+            {% if has_fleet_access %}<th>Transport</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -249,11 +344,33 @@
             <td><small class="text-muted">{{ activity.planned_month|date:"M Y" }}</small></td>
             <td>K{{ activity.total_budget|intcomma }}</td>
             <td><span class="text-success">K{{ activity.disbursed_amount|default:0|intcomma }}</span></td>
-            <td><span class="badge bg-light text-dark">K{{ activity.total_budget|add:activity.disbursed_amount|default:0|intcomma }}</span></td>
+            <td><span class="badge bg-light text-dark">K{{ activity.balance|intcomma }}</span></td>
+            {% if has_fleet_access %}
+            <td onclick="event.stopPropagation();">
+              {% with tr=activity.latest_transport_request %}
+              {% if tr %}
+                <a href="{% url 'bookings:request_detail' tr.pk %}" class="text-decoration-none" title="{{ tr.period_from|date:'d M' }} – {{ tr.period_to|date:'d M Y' }}, {{ tr.district.name }}">
+                  {% if tr.status == 'Approved' %}<span class="badge bg-success"><i class="bi bi-truck me-1"></i>Approved</span>
+                  {% elif tr.status == 'Submitted' %}<span class="badge bg-warning text-dark"><i class="bi bi-truck me-1"></i>Submitted</span>
+                  {% elif tr.status == 'Rejected' %}<span class="badge bg-danger"><i class="bi bi-truck me-1"></i>Rejected</span>
+                  {% elif tr.status == 'In Progress' %}<span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>In Progress</span>
+                  {% elif tr.status == 'Completed' %}<span class="badge bg-secondary"><i class="bi bi-truck me-1"></i>Completed</span>
+                  {% else %}<span class="badge bg-dark"><i class="bi bi-truck me-1"></i>{{ tr.status }}</span>{% endif %}
+                </a>
+              {% else %}
+                <button type="button" class="btn btn-sm btn-outline-secondary request-transport-btn"
+                        data-activity-pk="{{ activity.pk }}" data-bs-toggle="modal" data-bs-target="#transportRequestModal"
+                        title="Request transport for this activity">
+                  <i class="bi bi-truck"></i>
+                </button>
+              {% endif %}
+              {% endwith %}
+            </td>
+            {% endif %}
           </tr>
         {% empty %}
           <tr>
-            <td colspan="7" class="text-center text-muted py-5">
+            <td colspan="{% if has_fleet_access %}8{% else %}7{% endif %}" class="text-center text-muted py-5">
               <i class="bi bi-inbox fs-1 d-block mb-2"></i>
               <strong>No activities assigned yet</strong>
               <p class="mb-0">Create your first activity to get started.</p>
@@ -265,4 +382,154 @@
     </div>
   </div>
 </div>
+
+{% if has_fleet_access %}
+<!-- Quick Transport Request Modal -->
+<div class="modal fade" id="transportRequestModal" tabindex="-1" aria-labelledby="transportRequestModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" action="{% url 'bookings:request_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="transportRequestModalLabel"><i class="bi bi-truck me-2"></i>Request Transport</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Programme / Activity <span class="text-danger">*</span></label>
+              <select name="activity_choice" id="modal-activity-choice" class="form-select" required>
+                <option value="">Select activity…</option>
+                {% for activity in modal_activities %}
+                <option value="{{ activity.pk }}">{{ activity.activity_id }} — {{ activity.name|truncatewords:10 }}</option>
+                {% endfor %}
+                <option value="adhoc">Adhoc (activity not in the tracker)</option>
+              </select>
+              <div class="form-text">
+                If you can't see the activity you are requesting for, check with your cluster head
+                or activity lead to make sure it is assigned to you.
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Cluster/Unit/Department <span class="text-danger">*</span></label>
+              <select name="cluster_choice" class="form-select" required>
+                {% for cluster in user_clusters %}
+                <option value="{{ cluster.pk }}">{{ cluster.full_name }} ({{ cluster.short_name }})</option>
+                {% empty %}
+                <option value="">No cluster assigned</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12 d-none" id="modal-adhoc-wrap">
+              <label class="form-label">Adhoc activity description <span class="text-danger">*</span></label>
+              <input type="text" name="adhoc_activity" id="modal-adhoc-input" class="form-control" maxlength="300"
+                     placeholder="Describe the activity for this trip">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">From <span class="text-danger">*</span></label>
+              <input type="date" name="period_from" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">To <span class="text-danger">*</span></label>
+              <input type="date" name="period_to" class="form-control" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Province <span class="text-danger">*</span></label>
+              <select name="province" id="modal-province" class="form-select" required>
+                <option value="">Select province…</option>
+                {% for province in provinces %}
+                <option value="{{ province.pk }}">{{ province.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">District <span class="text-danger">*</span></label>
+              <select name="district" id="modal-district" class="form-select" required>
+                <option value="">Select province first…</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Destination <span class="text-danger">*</span></label>
+              <input type="text" name="destination" class="form-control" required placeholder="Specific location or address">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Vehicles <span class="text-danger">*</span></label>
+              <input type="number" name="num_vehicles" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Drivers <span class="text-danger">*</span></label>
+              <input type="number" name="num_drivers" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Passengers <span class="text-danger">*</span></label>
+              <input type="number" name="num_passengers" class="form-control" value="1" min="1" required>
+            </div>
+
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_emergency" id="modal-emergency">
+                <label class="form-check-label" for="modal-emergency">This is an emergency request</label>
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-light border mt-3 mb-0 py-2">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Requesting as <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>{% if request.user.position %},
+              {{ request.user.position }}{% endif %}. If your trip overlaps with another booking to the same
+              district you will be asked to confirm coordination on the next page.
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const modal = document.getElementById('transportRequestModal');
+  const activitySelect = document.getElementById('modal-activity-choice');
+  const adhocWrap = document.getElementById('modal-adhoc-wrap');
+  const adhocInput = document.getElementById('modal-adhoc-input');
+  const provinceSelect = document.getElementById('modal-province');
+  const districtSelect = document.getElementById('modal-district');
+  if (!modal) return;
+
+  // Show the adhoc description field only for adhoc requests.
+  const toggleAdhoc = () => {
+    const isAdhoc = activitySelect.value === 'adhoc';
+    adhocWrap.classList.toggle('d-none', !isAdhoc);
+    adhocInput.required = isAdhoc;
+  };
+  activitySelect.addEventListener('change', toggleAdhoc);
+
+  // Preselect the activity when opened from a table-row button.
+  modal.addEventListener('show.bs.modal', (event) => {
+    const trigger = event.relatedTarget;
+    const pk = trigger && trigger.getAttribute('data-activity-pk');
+    if (pk) activitySelect.value = pk;
+    toggleAdhoc();
+  });
+
+  // Cascading district options from the fleet HTMX endpoint.
+  provinceSelect.addEventListener('change', () => {
+    districtSelect.innerHTML = '<option value="">Loading…</option>';
+    fetch("{% url 'bookings:district_options' %}?province=" + encodeURIComponent(provinceSelect.value))
+      .then(r => r.text())
+      .then(html => { districtSelect.innerHTML = html || '<option value="">Select province first…</option>'; })
+      .catch(() => { districtSelect.innerHTML = '<option value="">Failed to load districts</option>'; });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
