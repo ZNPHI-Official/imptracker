@@ -13,11 +13,15 @@ from fleet.models import Vehicle, Driver
 User = get_user_model()
 
 
-def make_user(username='requester', group_name='Requester'):
+def make_user(username='requester', group_name='Requester', department=None, position='Officer'):
     user = User.objects.create_user(username=username, password='testpass123')
     if group_name:
         group, _ = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
+    # Requester details are sourced from the account on the request form.
+    user.position = position
+    user.department = department if department is not None else make_department()
+    user.save()
     return user
 
 
@@ -258,13 +262,14 @@ class TripAssignmentModelTest(TestCase):
 # ---------------------------------------------------------------------------
 
 def _valid_post_data(province, district, department):
-    """Return a minimal valid POST dict for the transport request form."""
+    """Return a minimal valid POST dict for the transport request form.
+
+    Requester details now come from the logged-in account, so the payload only
+    carries the activity selection (adhoc by default) and trip details."""
     future = datetime.date.today() + datetime.timedelta(weeks=4)
     return {
-        'requester_name': 'Alice Banda',
-        'department': str(department.pk),
-        'position': 'Officer',
-        'programme_activity': 'Field Visit',
+        'activity_choice': 'adhoc',
+        'adhoc_activity': 'Field Visit',
         'period_from': future.strftime('%Y-%m-%d'),
         'period_to': (future + datetime.timedelta(days=3)).strftime('%Y-%m-%d'),
         'province': str(province.pk),
@@ -318,10 +323,18 @@ class TransportRequestFormTest(TestCase):
     def test_missing_required_field_invalid(self):
         from .forms import TransportRequestForm
         data = _valid_post_data(self.province, self.district, self.department)
-        del data['requester_name']
+        del data['activity_choice']
         form = TransportRequestForm(data)
         self.assertFalse(form.is_valid())
-        self.assertIn('requester_name', form.errors)
+        self.assertIn('activity_choice', form.errors)
+
+    def test_adhoc_without_description_invalid(self):
+        from .forms import TransportRequestForm
+        data = _valid_post_data(self.province, self.district, self.department)
+        data['adhoc_activity'] = ''
+        form = TransportRequestForm(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('adhoc_activity', form.errors)
 
 
 class DistrictOptionsViewTest(TestCase):
@@ -379,7 +392,7 @@ class TransportRequestCreateViewTest(TestCase):
 
     def test_invalid_post_rerenders_form(self):
         data = _valid_post_data(self.province, self.district, self.department)
-        data['requester_name'] = ''
+        data['activity_choice'] = ''
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'bookings/request_form.html')
@@ -420,10 +433,8 @@ class CoordinationNudgeViewTest(TestCase):
         # Seed the session with pending request data, as the create view would.
         future = datetime.date.today() + datetime.timedelta(weeks=4)
         self.raw_data = {
-            'requester_name': 'Alice Banda',
-            'department': str(self.department.pk),
-            'position': 'Officer',
-            'programme_activity': 'Field Visit',
+            'activity_choice': 'adhoc',
+            'adhoc_activity': 'Field Visit',
             'period_from': future.strftime('%Y-%m-%d'),
             'period_to': (future + datetime.timedelta(days=3)).strftime('%Y-%m-%d'),
             'province': str(self.province.pk),
@@ -1193,10 +1204,8 @@ class NewRequestEmailTest(TestCase):
         self.client.login(username='req_email', password='testpass123')
         four_weeks = datetime.date.today() + datetime.timedelta(weeks=4)
         self.post_data = {
-            'requester_name': 'Test User',
-            'department': self.department.pk,
-            'position': 'Officer',
-            'programme_activity': 'Email Test Activity',
+            'activity_choice': 'adhoc',
+            'adhoc_activity': 'Email Test Activity',
             'period_from': str(four_weeks),
             'period_to': str(four_weeks + datetime.timedelta(days=5)),
             'province': self.province.pk,
@@ -1280,3 +1289,74 @@ class RequestQueueCSVTest(TestCase):
         self.client.login(username='req_csv', password='testpass123')
         response = self.client.get(f'{self.url}?export=csv')
         self.assertEqual(response.status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Programme activity selection from the Implementation Tracker
+# ---------------------------------------------------------------------------
+
+class ActivitySelectionTest(TestCase):
+
+    def setUp(self):
+        from activities.models import Activity
+        from masters.models import ActivityStatus
+        self.province = make_province()
+        self.district = make_district(province=self.province)
+        self.department = make_department()
+        self.user = make_user()
+        self.client.login(username='requester', password='testpass123')
+        self.url = reverse('bookings:request_create')
+        status = ActivityStatus.objects.create(name='Planned')
+        self.activity = Activity.objects.create(
+            activity_id='ACT-001', name='Cholera Response Training', year=2026,
+            status=status, planned_month=datetime.date(2026, 8, 1),
+            total_budget=1000, responsible_officer=self.user,
+        )
+        self.other_activity = Activity.objects.create(
+            activity_id='ACT-002', name='Not Mine', year=2026,
+            status=status, planned_month=datetime.date(2026, 8, 1),
+            total_budget=1000,
+        )
+
+    def test_form_lists_only_assigned_activities(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, 'ACT-001')
+        self.assertNotContains(response, 'ACT-002')
+
+    def test_selecting_assigned_activity_links_request(self):
+        data = _valid_post_data(self.province, self.district, self.department)
+        data['activity_choice'] = str(self.activity.pk)
+        data.pop('adhoc_activity')
+        response = self.client.post(self.url, data)
+        self.assertRedirects(response, reverse('bookings:my_requests'), fetch_redirect_response=False)
+        req = TransportRequest.objects.get()
+        self.assertEqual(req.activity, self.activity)
+        self.assertIn('ACT-001', req.programme_activity)
+        # Requester details sourced from the account
+        self.assertEqual(req.requester_name, 'requester')
+        self.assertEqual(req.position, 'Officer')
+        self.assertEqual(req.department, self.user.department)
+
+    def test_unassigned_activity_rejected(self):
+        data = _valid_post_data(self.province, self.district, self.department)
+        data['activity_choice'] = str(self.other_activity.pk)
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(TransportRequest.objects.count(), 0)
+
+    def test_adhoc_request_has_no_activity_link(self):
+        data = _valid_post_data(self.province, self.district, self.department)
+        response = self.client.post(self.url, data)
+        self.assertRedirects(response, reverse('bookings:my_requests'), fetch_redirect_response=False)
+        req = TransportRequest.objects.get()
+        self.assertIsNone(req.activity)
+        self.assertEqual(req.programme_activity, 'Field Visit')
+
+    def test_user_without_department_blocked(self):
+        self.user.department = None
+        self.user.save()
+        data = _valid_post_data(self.province, self.district, self.department)
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'no department set')
+        self.assertEqual(TransportRequest.objects.count(), 0)

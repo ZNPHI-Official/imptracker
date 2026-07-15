@@ -3,12 +3,38 @@ from django import forms
 from fleet.models import Driver, Vehicle
 from .models import District, TransportRequest
 
+ADHOC_CHOICE = 'adhoc'
+
+
+def assigned_activities(user):
+    """Implementation Tracker activities the user is responsible for."""
+    from activities.models import Activity
+    if user is None or not user.is_authenticated:
+        return Activity.objects.none()
+    return (
+        Activity.objects
+        .filter(responsible_officer=user, deleted=False, retired=False)
+        .order_by('-year', 'activity_id')
+    )
+
 
 class TransportRequestForm(forms.ModelForm):
+    """Transport request form. Requester name, position and department are not
+    entered by the user — they come from the logged-in account. The programme
+    activity is picked from the user's assigned tracker activities, or entered
+    as free text for adhoc trips."""
+
+    activity_choice = forms.ChoiceField(label='Programme / Activity')
+    adhoc_activity = forms.CharField(
+        label='Adhoc activity description',
+        max_length=300,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Describe the activity for this trip'}),
+    )
+
     class Meta:
         model = TransportRequest
         fields = [
-            'requester_name', 'department', 'position', 'programme_activity',
             'period_from', 'period_to', 'province', 'district',
             'destination', 'num_vehicles', 'num_drivers', 'num_passengers',
             'is_emergency',
@@ -18,8 +44,15 @@ class TransportRequestForm(forms.ModelForm):
             'period_to': forms.DateInput(attrs={'type': 'date'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
+        self.activities = list(assigned_activities(user))
+        self.fields['activity_choice'].choices = (
+            [('', 'Select activity…')]
+            + [(str(a.pk), f'{a.activity_id} — {a.name}') for a in self.activities]
+            + [(ADHOC_CHOICE, 'Adhoc (activity not in the tracker)')]
+        )
         # District choices depend on province; start empty and populate via HTMX or POST data.
         self.fields['district'].queryset = District.objects.none()
         if 'province' in self.data:
@@ -31,6 +64,14 @@ class TransportRequestForm(forms.ModelForm):
         elif self.instance.pk:
             self.fields['district'].queryset = District.objects.filter(province=self.instance.province)
 
+    def clean_activity_choice(self):
+        choice = self.cleaned_data['activity_choice']
+        if choice == ADHOC_CHOICE:
+            return choice
+        if not any(str(a.pk) == choice for a in self.activities):
+            raise forms.ValidationError('Select one of your assigned activities or Adhoc.')
+        return choice
+
     def clean(self):
         cleaned = super().clean()
         period_from = cleaned.get('period_from')
@@ -41,6 +82,30 @@ class TransportRequestForm(forms.ModelForm):
         province = cleaned.get('province')
         if district and province and district.province != province:
             raise forms.ValidationError('Selected district does not belong to the selected province.')
+
+        # Requester details come from the account, not the form.
+        if self.user is not None:
+            if self.user.department is None:
+                raise forms.ValidationError(
+                    'Your account has no department set. Please ask a system '
+                    'administrator to set your department before requesting transport.'
+                )
+            cleaned['requester_name'] = self.user.get_full_name() or self.user.username
+            cleaned['position'] = self.user.position
+            cleaned['department'] = self.user.department
+
+        # Resolve the selected activity into the stored fields.
+        choice = cleaned.get('activity_choice')
+        if choice == ADHOC_CHOICE:
+            adhoc = (cleaned.get('adhoc_activity') or '').strip()
+            if not adhoc:
+                self.add_error('adhoc_activity', 'Describe the adhoc activity for this trip.')
+            cleaned['activity'] = None
+            cleaned['programme_activity'] = adhoc
+        elif choice:
+            activity = next(a for a in self.activities if str(a.pk) == choice)
+            cleaned['activity'] = activity
+            cleaned['programme_activity'] = f'{activity.activity_id} — {activity.name}'[:300]
         return cleaned
 
 

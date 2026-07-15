@@ -82,6 +82,7 @@ def _save_transport_request(cleaned_data, submitted_by=None,
         department=cleaned_data['department'],
         position=cleaned_data['position'],
         programme_activity=cleaned_data['programme_activity'],
+        activity=cleaned_data.get('activity'),
         period_from=cleaned_data['period_from'],
         period_to=cleaned_data['period_to'],
         province=cleaned_data['province'],
@@ -116,12 +117,12 @@ class TransportRequestCreateView(GroupRequiredMixin, View):
     template_name = 'bookings/request_form.html'
 
     def get(self, request):
-        form = TransportRequestForm()
+        form = TransportRequestForm(user=request.user)
         provinces = Province.objects.all()
         return render(request, self.template_name, {'form': form, 'provinces': provinces})
 
     def post(self, request):
-        form = TransportRequestForm(request.POST)
+        form = TransportRequestForm(request.POST, user=request.user)
         provinces = Province.objects.all()
 
         if not form.is_valid():
@@ -170,7 +171,7 @@ class CoordinationNudgeView(LoginRequiredMixin, View):
         raw = request.session.get('pending_request_data')
         if not raw:
             return None, None, None
-        form = TransportRequestForm(raw)
+        form = TransportRequestForm(raw, user=request.user)
         form.is_valid()  # populate cleaned_data without raising on errors
         trip_ids = request.session.get('overlapping_trip_ids', [])
         overlapping = (

@@ -48,6 +48,15 @@ class TransportRequest(models.Model):
     department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name='transport_requests')
     position = models.CharField(max_length=200)
     programme_activity = models.CharField(max_length=300)
+    # Implementation Tracker activity this trip belongs to; null for adhoc
+    # requests, where programme_activity holds the free-text description.
+    activity = models.ForeignKey(
+        'activities.Activity',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transport_requests',
+    )
     date_of_request = models.DateField(auto_now_add=True)
     period_from = models.DateField()
     period_to = models.DateField()
