@@ -1,7 +1,7 @@
 from django import forms
 
 from fleet.models import Driver, Vehicle
-from .models import District, TransportRequest
+from .models import Department, District, TransportRequest
 
 ADHOC_CHOICE = 'adhoc'
 
@@ -25,6 +25,9 @@ class TransportRequestForm(forms.ModelForm):
     as free text for adhoc trips."""
 
     activity_choice = forms.ChoiceField(label='Programme / Activity')
+    # ZNPHI uses "cluster", "unit" and "department" interchangeably; the fleet
+    # side stores a Department row mapped from the tracker Cluster on save.
+    cluster_choice = forms.ChoiceField(label='Cluster/Unit/Department')
     adhoc_activity = forms.CharField(
         label='Adhoc activity description',
         max_length=300,
@@ -47,6 +50,16 @@ class TransportRequestForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        self.user_clusters = (
+            list(user.clusters.all()) if user is not None and user.is_authenticated else []
+        )
+        self.fields['cluster_choice'].choices = [
+            (str(c.pk), f'{c.full_name} ({c.short_name})') for c in self.user_clusters
+        ]
+        if len(self.user_clusters) == 1:
+            self.fields['cluster_choice'].initial = str(self.user_clusters[0].pk)
+        # With no clusters the friendly non-field error from clean() suffices.
+        self.fields['cluster_choice'].required = bool(self.user_clusters)
         self.activities = list(assigned_activities(user))
         self.fields['activity_choice'].choices = (
             [('', 'Select activity…')]
@@ -83,16 +96,24 @@ class TransportRequestForm(forms.ModelForm):
         if district and province and district.province != province:
             raise forms.ValidationError('Selected district does not belong to the selected province.')
 
-        # Requester details come from the account, not the form.
+        # Requester details come from the account, not the form. The selected
+        # tracker Cluster is mapped to the fleet Department table by name.
         if self.user is not None:
-            if self.user.department is None:
+            if not self.user_clusters:
                 raise forms.ValidationError(
-                    'Your account has no department set. Please ask a system '
-                    'administrator to set your department before requesting transport.'
+                    'Your account has no cluster/unit/department assigned. Please ask a '
+                    'system administrator to assign your cluster before requesting transport.'
                 )
             cleaned['requester_name'] = self.user.get_full_name() or self.user.username
             cleaned['position'] = self.user.position
-            cleaned['department'] = self.user.department
+            choice = cleaned.get('cluster_choice')
+            cluster = next((c for c in self.user_clusters if str(c.pk) == choice), None)
+            if cluster is None:
+                self.add_error('cluster_choice', 'Select one of your assigned clusters.')
+            else:
+                cleaned['department'] = Department.objects.get_or_create(
+                    name=cluster.full_name[:200]
+                )[0]
 
         # Resolve the selected activity into the stored fields.
         choice = cleaned.get('activity_choice')

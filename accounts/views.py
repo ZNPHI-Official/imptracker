@@ -44,17 +44,6 @@ def app_switcher(request):
     })
 
 
-def _resolve_department(department_id):
-    """Return the bookings.Department for a form value, or None."""
-    from bookings.models import Department
-    if not department_id:
-        return None
-    try:
-        return Department.objects.get(pk=int(department_id))
-    except (ValueError, TypeError, Department.DoesNotExist):
-        return None
-
-
 def grouped_roles():
     """Split all groups into Implementation Tracker, Fleet Manager, and other
     roles so user forms can present them as separate sections."""
@@ -186,9 +175,8 @@ def user_create(request):
         # Assign roles (required)
         user.groups.set(Group.objects.filter(id__in=role_ids))
 
-        # Position and department (used to prefill fleet transport requests)
+        # Position (used to prefill fleet transport requests)
         user.position = (request.POST.get('position') or '').strip()
-        user.department = _resolve_department(request.POST.get('department'))
 
         # Assign clusters
         cluster_ids = request.POST.getlist('clusters')
@@ -212,7 +200,6 @@ def user_create(request):
     tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
-    from bookings.models import Department
     funders = Funder.objects.filter(active=True).order_by('name')
     context = {
         'tracker_roles': tracker_roles,
@@ -220,7 +207,6 @@ def user_create(request):
         'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
-        'departments': Department.objects.order_by('name'),
     }
     return render(request, 'accounts/user_form.html', context)
 
@@ -266,9 +252,8 @@ def user_edit(request, pk):
             return redirect('accounts:user_edit', pk=pk)
         user.groups.set(Group.objects.filter(id__in=role_ids))
 
-        # Position and department (used to prefill fleet transport requests)
+        # Position (used to prefill fleet transport requests)
         user.position = (request.POST.get('position') or '').strip()
-        user.department = _resolve_department(request.POST.get('department'))
         
         # Assign clusters
         cluster_ids = request.POST.getlist('clusters')
@@ -293,9 +278,7 @@ def user_edit(request, pk):
     tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
-    from bookings.models import Department
     funders = Funder.objects.filter(active=True).order_by('name')
-    departments = Department.objects.order_by('name')
     user_role_ids = list(user.groups.values_list('id', flat=True))
     user_cluster_ids = list(user.clusters.values_list('id', flat=True))
     user_coordinated_funder_id = user.coordinated_funder.id if user.coordinated_funder else None
@@ -307,7 +290,6 @@ def user_edit(request, pk):
         'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
-        'departments': departments,
         'user_role_ids': user_role_ids,
         'user_cluster_ids': user_cluster_ids,
         'user_coordinated_funder_id': user_coordinated_funder_id,

@@ -36,16 +36,27 @@
                         <input type="text" value="{{ request.user.position|default:'—' }}"
                                class="input input-bordered w-full" disabled>
                     </div>
+                    {% with field=form.cluster_choice %}
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Department</span></label>
-                        <input type="text" value="{{ request.user.department|default:'—' }}"
-                               class="input input-bordered w-full" disabled>
+                        <label class="label" for="{{ field.id_for_label }}">
+                            <span class="label-text font-medium">{{ field.label }} <span class="text-error">*</span></span>
+                        </label>
+                        <select id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                                class="select select-bordered {% if field.errors %}select-error{% endif %} w-full">
+                            {% for value, label in field.field.choices %}
+                            <option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" or field.field.initial|stringformat:"s" == value|stringformat:"s" and not field.value %}selected{% endif %}>{{ label }}</option>
+                            {% empty %}
+                            <option value="">No cluster assigned</option>
+                            {% endfor %}
+                        </select>
+                        {% for e in field.errors %}<label class="label"><span class="label-text-alt text-error">{{ e }}</span></label>{% endfor %}
                     </div>
+                    {% endwith %}
                 </div>
-                {% if not request.user.department %}
+                {% if not form.user_clusters %}
                 <div role="alert" class="alert alert-warning mt-3">
-                    <span>Your account has no department set. Please ask a system administrator to
-                    set your department before requesting transport.</span>
+                    <span>Your account has no cluster/unit/department assigned. Please ask a system
+                    administrator to assign your cluster before requesting transport.</span>
                 </div>
                 {% endif %}
 
@@ -219,7 +230,7 @@
 
         <div class="flex justify-end gap-3">
             <a href="{% url 'bookings:my_requests' %}" class="btn btn-ghost">Cancel</a>
-            <button type="submit" class="btn btn-primary" {% if not request.user.department %}disabled{% endif %}>Submit Request</button>
+            <button type="submit" class="btn btn-primary" {% if not form.user_clusters %}disabled{% endif %}>Submit Request</button>
         </div>
     </form>
 </div>

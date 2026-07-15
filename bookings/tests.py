@@ -13,15 +13,21 @@ from fleet.models import Vehicle, Driver
 User = get_user_model()
 
 
-def make_user(username='requester', group_name='Requester', department=None, position='Officer'):
+def make_cluster(short_name='SDI', full_name='Surveillance and Disease Intelligence'):
+    from accounts.models import Cluster
+    return Cluster.objects.get_or_create(short_name=short_name, defaults={'full_name': full_name})[0]
+
+
+def make_user(username='requester', group_name='Requester', cluster=None, position='Officer'):
     user = User.objects.create_user(username=username, password='testpass123')
     if group_name:
         group, _ = Group.objects.get_or_create(name=group_name)
         user.groups.add(group)
-    # Requester details are sourced from the account on the request form.
+    # Requester details are sourced from the account on the request form; the
+    # tracker cluster doubles as the fleet department.
     user.position = position
-    user.department = department if department is not None else make_department()
     user.save()
+    user.clusters.add(cluster if cluster is not None else make_cluster())
     return user
 
 
@@ -270,6 +276,7 @@ def _valid_post_data(province, district, department):
     return {
         'activity_choice': 'adhoc',
         'adhoc_activity': 'Field Visit',
+        'cluster_choice': str(make_cluster().pk),
         'period_from': future.strftime('%Y-%m-%d'),
         'period_to': (future + datetime.timedelta(days=3)).strftime('%Y-%m-%d'),
         'province': str(province.pk),
@@ -291,7 +298,7 @@ class TransportRequestFormTest(TestCase):
     def test_valid_form_saves(self):
         from .forms import TransportRequestForm
         data = _valid_post_data(self.province, self.district, self.department)
-        form = TransportRequestForm(data)
+        form = TransportRequestForm(data, user=make_user(username='formuser'))
         self.assertTrue(form.is_valid(), form.errors)
 
     def test_end_before_start_invalid(self):
@@ -435,6 +442,7 @@ class CoordinationNudgeViewTest(TestCase):
         self.raw_data = {
             'activity_choice': 'adhoc',
             'adhoc_activity': 'Field Visit',
+            'cluster_choice': str(make_cluster().pk),
             'period_from': future.strftime('%Y-%m-%d'),
             'period_to': (future + datetime.timedelta(days=3)).strftime('%Y-%m-%d'),
             'province': str(self.province.pk),
@@ -1206,6 +1214,7 @@ class NewRequestEmailTest(TestCase):
         self.post_data = {
             'activity_choice': 'adhoc',
             'adhoc_activity': 'Email Test Activity',
+            'cluster_choice': str(make_cluster().pk),
             'period_from': str(four_weeks),
             'period_to': str(four_weeks + datetime.timedelta(days=5)),
             'province': self.province.pk,
@@ -1332,10 +1341,11 @@ class ActivitySelectionTest(TestCase):
         req = TransportRequest.objects.get()
         self.assertEqual(req.activity, self.activity)
         self.assertIn('ACT-001', req.programme_activity)
-        # Requester details sourced from the account
+        # Requester details sourced from the account; the tracker cluster
+        # is mapped to a fleet Department row by full name.
         self.assertEqual(req.requester_name, 'requester')
         self.assertEqual(req.position, 'Officer')
-        self.assertEqual(req.department, self.user.department)
+        self.assertEqual(req.department.name, self.user.clusters.first().full_name)
 
     def test_unassigned_activity_rejected(self):
         data = _valid_post_data(self.province, self.district, self.department)
@@ -1352,11 +1362,18 @@ class ActivitySelectionTest(TestCase):
         self.assertIsNone(req.activity)
         self.assertEqual(req.programme_activity, 'Field Visit')
 
-    def test_user_without_department_blocked(self):
-        self.user.department = None
-        self.user.save()
+    def test_user_without_cluster_blocked(self):
+        self.user.clusters.clear()
         data = _valid_post_data(self.province, self.district, self.department)
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'no department set')
+        self.assertContains(response, 'no cluster/unit/department assigned')
+        self.assertEqual(TransportRequest.objects.count(), 0)
+
+    def test_cluster_not_assigned_to_user_rejected(self):
+        other = make_cluster(short_name='EPR', full_name='Emergency Preparedness and Response')
+        data = _valid_post_data(self.province, self.district, self.department)
+        data['cluster_choice'] = str(other.pk)
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(TransportRequest.objects.count(), 0)

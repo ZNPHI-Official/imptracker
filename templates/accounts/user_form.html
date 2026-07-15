@@ -48,22 +48,10 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Position</label>
-                    <input type="text" name="position" class="form-control" value="{% if is_edit %}{{ user_obj.position }}{% endif %}" placeholder="e.g. Surveillance Officer">
-                    <div class="form-text">Shown as the requester's position on fleet transport requests.</div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Department</label>
-                    <select name="department" class="form-select">
-                        <option value="">Select department…</option>
-                        {% for dept in departments %}
-                        <option value="{{ dept.id }}" {% if is_edit and dept.id == user_obj.department_id %}selected{% endif %}>{{ dept.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Required before the user can submit fleet transport requests.</div>
-                </div>
+            <div class="mb-3">
+                <label class="form-label">Position</label>
+                <input type="text" name="position" class="form-control" value="{% if is_edit %}{{ user_obj.position }}{% endif %}" placeholder="e.g. Surveillance Officer">
+                <div class="form-text">Shown as the requester's position on fleet transport requests. The user's cluster (below) doubles as their department on transport requests.</div>
             </div>
 
             {% if not is_edit %}
