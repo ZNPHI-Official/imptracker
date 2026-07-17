@@ -104,7 +104,7 @@ class AppSwitcherTest(TestCase):
         self.client.force_login(user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'No application access')
+        self.assertContains(response, 'No workspace access')
 
 
 class FleetHomeRoutingTest(TestCase):

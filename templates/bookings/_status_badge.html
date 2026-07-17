@@ -1,0 +1,7 @@
+{% if status == 'Submitted' %}<span class="badge bg-warning-subtle text-warning-emphasis">Submitted</span>
+{% elif status == 'Approved' %}<span class="badge bg-success-subtle text-success-emphasis">Approved</span>
+{% elif status == 'Rejected' %}<span class="badge bg-danger-subtle text-danger-emphasis">Rejected</span>
+{% elif status == 'In Progress' %}<span class="badge bg-info-subtle text-info-emphasis">In Progress</span>
+{% elif status == 'Completed' %}<span class="badge bg-secondary-subtle text-secondary-emphasis">Completed</span>
+{% elif status == 'Cancelled' %}<span class="badge bg-light text-muted border">Cancelled</span>
+{% else %}<span class="badge bg-dark-subtle text-dark">{{ status }}</span>{% endif %}

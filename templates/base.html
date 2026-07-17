@@ -59,7 +59,7 @@
     </style>
   </head>
   
-  <body class="d-flex flex-column min-vh-100" style="background-color: #CECECE;">
+  <body class="d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}" style="background-color: #CECECE;">
 
     <!-- Page load spinner -->
     <div id="pageSpinner" style="position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,0.82);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .25s ease;">
@@ -86,6 +86,7 @@
         <div class="collapse navbar-collapse" id="navbarContent">
           {% if request.user.is_authenticated %}
           <!-- Main Nav Items (right side) -->
+          {% block nav_items %}
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
               <a class="nav-link fw-500 {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboards:dashboard' %}">
@@ -165,6 +166,7 @@
               </a>
             </li>
           </ul>
+          {% endblock %}
 
           <!-- User Dropdown (far right) -->
           <ul class="navbar-nav">
@@ -222,7 +224,7 @@
       <div class="container-fluid px-3 px-md-4" style="padding-top: 5px; padding-bottom: 5px;">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-0 small">
-            <li class="breadcrumb-item"><a href="{% url 'dashboards:dashboard' %}">Home</a></li>
+            {% block breadcrumb_home %}<li class="breadcrumb-item"><a href="{% url 'dashboards:dashboard' %}">Home</a></li>{% endblock %}
             {% block breadcrumb %}{% endblock %}
           </ol>
         </nav>
@@ -265,7 +267,7 @@
             <p class="mb-0 text-muted small">&copy; {% now "Y" %} ZNPHI. All rights reserved.</p>
           </div>
           <div class="col-md-6 text-md-end">
-            <p class="mb-0 text-muted small">An open Source project powered by <a href="https://github.com/byte-data/imptracker" style="text-decoration: none; color: black;" target=_blank /><b>ByteData</b></a>.</p>
+            <p class="mb-0 text-muted small">Developed and Maintained by <a href="#" style="text-decoration: none; color: black;" /><b>ZNPHI ICT</b></a>.</p>
           </div>
         </div>
       </div>

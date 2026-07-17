@@ -1,115 +1,64 @@
 {% extends 'fleet_base.html' %}
 
 {% block title %}Settings | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Settings</li>{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl">
-
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold text-base-content">System Settings</h1>
-    <p class="text-sm text-base-content/60 mt-1">Configure fleet management behaviour. Changes take effect immediately.</p>
+<div style="max-width: 720px;">
+  <div class="mb-3">
+    <h1 class="h3 fw-bold mb-1">System Settings</h1>
+    <p class="page-lead mb-0">Configure fleet management behaviour. Changes take effect immediately.</p>
   </div>
 
   <form method="post" novalidate>
     {% csrf_token %}
 
-    <!-- Email Notifications -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-4">
-      <div class="card-body py-5 px-6">
-        <h2 class="font-semibold text-base mb-1">Email Notifications</h2>
-        <p class="text-sm text-base-content/60 mb-4">
-          When enabled, a notification email is sent each time a new transport request is submitted.
-        </p>
-
-        <label class="flex items-center gap-3 cursor-pointer mb-4">
-          {{ form.email_notifications_enabled }}
-          <span class="text-sm font-medium">Enable email notifications</span>
-        </label>
-
-        <div>
-          <label class="label pt-0"><span class="label-text text-sm">Notification email address</span></label>
-          {{ form.notification_email }}
-          {% if form.notification_email.errors %}
-          <p class="text-error text-xs mt-1">{{ form.notification_email.errors.0 }}</p>
-          {% endif %}
-          <p class="text-xs text-base-content/40 mt-1">{{ form.notification_email.help_text }}</p>
-        </div>
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 fw-semibold mb-1">Email Notifications</h2>
+      <p class="text-muted small mb-3">When enabled, a notification email is sent each time a new transport request is submitted.</p>
+      <div class="form-check form-switch mb-3">
+        {{ form.email_notifications_enabled }}
+        <label class="form-check-label" for="{{ form.email_notifications_enabled.id_for_label }}">Enable email notifications</label>
       </div>
-    </div>
-
-    <!-- Booking Buffer -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-4">
-      <div class="card-body py-5 px-6">
-        <h2 class="font-semibold text-base mb-1">Booking Buffer</h2>
-        <p class="text-sm text-base-content/60 mb-4">
-          Vehicles and drivers are treated as unavailable for this many days before and after each trip,
-          preventing back-to-back scheduling without recovery time.
-        </p>
-
-        <div class="flex items-center gap-3">
-          {{ form.buffer_days }}
-          <span class="text-sm text-base-content/70">days</span>
-        </div>
-        {% if form.buffer_days.errors %}
-        <p class="text-error text-xs mt-1">{{ form.buffer_days.errors.0 }}</p>
-        {% endif %}
+      <div>
+        <label class="form-label" for="{{ form.notification_email.id_for_label }}">Notification email address</label>
+        {{ form.notification_email }}
+        {% if form.notification_email.errors %}<div class="invalid-feedback d-block">{{ form.notification_email.errors.0 }}</div>{% endif %}
+        <div class="form-text">{{ form.notification_email.help_text }}</div>
       </div>
-    </div>
+    </div></div>
 
-    <!-- Coordination Nudge -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-4">
-      <div class="card-body py-5 px-6">
-        <h2 class="font-semibold text-base mb-1">Coordination Nudge</h2>
-        <p class="text-sm text-base-content/60 mb-4">
-          When a requester submits a trip, they are shown a nudge if another trip to the same
-          district falls within this window — prompting them to coordinate before submitting separately.
-        </p>
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 fw-semibold mb-1">Booking Buffer</h2>
+      <p class="text-muted small mb-3">Vehicles and drivers are treated as unavailable for this many days before and after each trip, preventing back-to-back scheduling without recovery time.</p>
+      <div class="input-group" style="max-width: 12rem;">{{ form.buffer_days }}<span class="input-group-text">days</span></div>
+      {% if form.buffer_days.errors %}<div class="invalid-feedback d-block">{{ form.buffer_days.errors.0 }}</div>{% endif %}
+    </div></div>
 
-        <div class="mb-3">
-          <label class="label pt-0"><span class="label-text text-sm">Window mode</span></label>
-          {{ form.nudge_mode }}
-          {% if form.nudge_mode.errors %}
-          <p class="text-error text-xs mt-1">{{ form.nudge_mode.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <div>
-          <label class="label pt-0"><span class="label-text text-sm">Custom window (days) — used only when mode is "Custom ± days"</span></label>
-          <div class="flex items-center gap-3">
-            {{ form.nudge_custom_days }}
-            <span class="text-sm text-base-content/70">days</span>
-          </div>
-          {% if form.nudge_custom_days.errors %}
-          <p class="text-error text-xs mt-1">{{ form.nudge_custom_days.errors.0 }}</p>
-          {% endif %}
-        </div>
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 fw-semibold mb-1">Coordination Nudge</h2>
+      <p class="text-muted small mb-3">When a requester submits a trip, they are shown a nudge if another trip to the same district falls within this window — prompting them to coordinate before submitting separately.</p>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.nudge_mode.id_for_label }}">Window mode</label>
+        {{ form.nudge_mode }}
+        {% if form.nudge_mode.errors %}<div class="invalid-feedback d-block">{{ form.nudge_mode.errors.0 }}</div>{% endif %}
       </div>
-    </div>
-
-    <!-- Maintenance Defaults -->
-    <div class="card bg-base-100 shadow-sm border border-base-300 mb-6">
-      <div class="card-body py-5 px-6">
-        <h2 class="font-semibold text-base mb-1">Maintenance Defaults</h2>
-        <p class="text-sm text-base-content/60 mb-4">
-          Applied to new vehicles when no individual override is set.
-          Existing per-vehicle intervals are not affected by changes here.
-        </p>
-
-        <div>
-          <label class="label pt-0"><span class="label-text text-sm">Default service interval</span></label>
-          <div class="flex items-center gap-3">
-            {{ form.default_maintenance_interval_km }}
-            <span class="text-sm text-base-content/70">km</span>
-          </div>
-          {% if form.default_maintenance_interval_km.errors %}
-          <p class="text-error text-xs mt-1">{{ form.default_maintenance_interval_km.errors.0 }}</p>
-          {% endif %}
-        </div>
+      <div>
+        <label class="form-label" for="{{ form.nudge_custom_days.id_for_label }}">Custom window (days) — used only when mode is "Custom ± days"</label>
+        <div class="input-group" style="max-width: 12rem;">{{ form.nudge_custom_days }}<span class="input-group-text">days</span></div>
+        {% if form.nudge_custom_days.errors %}<div class="invalid-feedback d-block">{{ form.nudge_custom_days.errors.0 }}</div>{% endif %}
       </div>
-    </div>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 fw-semibold mb-1">Maintenance Defaults</h2>
+      <p class="text-muted small mb-3">Applied to new vehicles when no individual override is set. Existing per-vehicle intervals are not affected by changes here.</p>
+      <label class="form-label" for="{{ form.default_maintenance_interval_km.id_for_label }}">Default service interval</label>
+      <div class="input-group" style="max-width: 14rem;">{{ form.default_maintenance_interval_km }}<span class="input-group-text">km</span></div>
+      {% if form.default_maintenance_interval_km.errors %}<div class="invalid-feedback d-block">{{ form.default_maintenance_interval_km.errors.0 }}</div>{% endif %}
+    </div></div>
 
     <button type="submit" class="btn btn-primary">Save Settings</button>
-
   </form>
 </div>
 {% endblock %}

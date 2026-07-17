@@ -132,7 +132,7 @@ class TransportRequestForm(forms.ModelForm):
 
 class RequestApprovalForm(forms.Form):
     admin_comment = forms.CharField(
-        widget=forms.Textarea(attrs={'rows': 3, 'class': 'textarea textarea-bordered w-full'}),
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
         required=False,
         label='Comment (visible to requester)',
     )
@@ -146,13 +146,13 @@ class RequestApprovalForm(forms.Form):
                 queryset=vehicle_qs,
                 label=f'Vehicle {i}',
                 empty_label='Select vehicle…',
-                widget=forms.Select(attrs={'class': 'select select-bordered w-full'}),
+                widget=forms.Select(attrs={'class': 'form-select'}),
             )
             self.fields[f'driver_{i}'] = forms.ModelChoiceField(
                 queryset=driver_qs,
                 label=f'Driver {i}',
                 empty_label='Select driver…',
-                widget=forms.Select(attrs={'class': 'select select-bordered w-full'}),
+                widget=forms.Select(attrs={'class': 'form-select'}),
             )
 
     def field_groups(self):

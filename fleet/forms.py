@@ -2,9 +2,9 @@ from django import forms
 
 from .models import Driver, FuelRecord, MaintenanceRecord, Vehicle
 
-_input = 'input input-bordered w-full'
-_select = 'select select-bordered w-full'
-_textarea = 'textarea textarea-bordered w-full'
+_input = 'form-control'
+_select = 'form-select'
+_textarea = 'form-control'
 
 
 class VehicleEditForm(forms.ModelForm):

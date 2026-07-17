@@ -1,84 +1,54 @@
 {% extends 'fleet_base.html' %}
 
 {% block title %}Drivers | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Drivers</li>{% endblock %}
 
 {% block content %}
-
-<div class="flex items-center justify-between mb-6">
-    <div>
-        <h1 class="text-2xl font-bold text-base-content">Drivers</h1>
-        <p class="text-sm text-base-content/60 mt-1">{{ total }} driver{{ total|pluralize }} registered</p>
-    </div>
-    <div class="flex gap-2">
-        <a href="{% url 'fleet:vehicle_list' %}" class="btn btn-outline btn-sm">View Vehicles</a>
-        {% if can_edit %}
-        <a href="{% url 'fleet:driver_add' %}" class="btn btn-primary btn-sm">+ Add Driver</a>
-        {% endif %}
-    </div>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1">Drivers</h1>
+    <p class="page-lead mb-0">{{ total }} driver{{ total|pluralize }} registered</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'fleet:vehicle_list' %}" class="btn btn-outline-secondary">View Vehicles</a>
+    {% if can_edit %}<a href="{% url 'fleet:driver_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Driver</a>{% endif %}
+  </div>
 </div>
 
-<!-- Status summary -->
-<div class="grid grid-cols-3 gap-4 mb-6">
-    <div class="stat bg-base-100 rounded-box shadow-sm border border-base-300 py-4 px-5">
-        <div class="stat-title text-xs">Available</div>
-        <div class="stat-value text-success text-2xl">{{ count_available }}</div>
-    </div>
-    <div class="stat bg-base-100 rounded-box shadow-sm border border-base-300 py-4 px-5">
-        <div class="stat-title text-xs">On Assignment</div>
-        <div class="stat-value text-info text-2xl">{{ count_on_assignment }}</div>
-    </div>
-    <div class="stat bg-base-100 rounded-box shadow-sm border border-base-300 py-4 px-5">
-        <div class="stat-title text-xs">On Leave</div>
-        <div class="stat-value text-warning text-2xl">{{ count_on_leave }}</div>
-    </div>
+<div class="row g-3 mb-3">
+  <div class="col-4"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">Available</div><div class="h3 stat-value text-success mb-0">{{ count_available }}</div></div></div></div>
+  <div class="col-4"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">On Assignment</div><div class="h3 stat-value text-info mb-0">{{ count_on_assignment }}</div></div></div></div>
+  <div class="col-4"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">On Leave</div><div class="h3 stat-value text-warning mb-0">{{ count_on_leave }}</div></div></div></div>
 </div>
 
-<!-- Driver table -->
-<div class="card bg-base-100 shadow-sm border border-base-300">
-    <div class="card-body p-0">
-        <div class="overflow-x-auto">
-            <table class="table table-zebra w-full">
-                <thead>
-                    <tr class="text-base-content/60 text-xs uppercase tracking-wide">
-                        {% include "partials/sort_header.html" with label="Name" key="name" %}
-                        {% include "partials/sort_header.html" with label="Phone" key="phone" %}
-                        {% include "partials/sort_header.html" with label="Status" key="status" %}
-                        {% if can_edit %}<th></th>{% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for driver in drivers %}
-                    <tr class="hover">
-                        <td class="font-medium">{{ driver.name }}</td>
-                        <td class="text-sm text-base-content/60">
-                            {{ driver.phone|default:"—" }}
-                        </td>
-                        <td>
-                            {% if driver.status == 'Available' %}
-                                <span class="badge badge-success badge-sm">Available</span>
-                            {% elif driver.status == 'On Assignment' %}
-                                <span class="badge badge-info badge-sm">On Assignment</span>
-                            {% else %}
-                                <span class="badge badge-warning badge-sm">On Leave</span>
-                            {% endif %}
-                        </td>
-                        {% if can_edit %}
-                        <td class="text-right">
-                            <a href="{% url 'fleet:driver_edit' driver.pk %}" class="btn btn-ghost btn-xs">Edit</a>
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center py-10 text-base-content/40">
-                            No drivers registered.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          {% include "partials/sort_header.html" with label="Name" key="name" %}
+          {% include "partials/sort_header.html" with label="Phone" key="phone" %}
+          {% include "partials/sort_header.html" with label="Status" key="status" %}
+          {% if can_edit %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for driver in drivers %}
+        <tr>
+          <td class="fw-medium">{{ driver.name }}</td>
+          <td class="small text-muted">{{ driver.phone|default:"—" }}</td>
+          <td>
+            {% if driver.status == 'Available' %}<span class="badge bg-success-subtle text-success-emphasis">Available</span>
+            {% elif driver.status == 'On Assignment' %}<span class="badge bg-info-subtle text-info-emphasis">On Assignment</span>
+            {% else %}<span class="badge bg-warning-subtle text-warning-emphasis">On Leave</span>{% endif %}
+          </td>
+          {% if can_edit %}<td class="text-end"><a href="{% url 'fleet:driver_edit' driver.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a></td>{% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center empty-state py-5">No drivers registered.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-
 {% endblock %}

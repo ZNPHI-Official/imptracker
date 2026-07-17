@@ -3,15 +3,14 @@
 {% block title %}Home — ZNPHI Fleet Manager{% endblock %}
 
 {% block content %}
-<div class="hero py-16">
-    <div class="hero-content text-center">
-        <div>
-            <h1 class="text-4xl font-bold text-base-content">Welcome, {{ user.get_full_name|default:user.username }}</h1>
-            <p class="mt-4 text-base-content/70">
-                Your account has not been assigned a role yet.<br>
-                Please contact your administrator.
-            </p>
-        </div>
-    </div>
+<div class="d-flex justify-content-center align-items-center text-center" style="min-height: 60vh;">
+  <div>
+    <i class="bi bi-truck text-success" style="font-size: 3rem;"></i>
+    <h1 class="h3 fw-bold mt-3">Welcome, {{ user.get_full_name|default:user.username }}</h1>
+    <p class="text-muted">
+      Your account has not been assigned a fleet role yet.<br>
+      Please contact your administrator.
+    </p>
+  </div>
 </div>
 {% endblock %}

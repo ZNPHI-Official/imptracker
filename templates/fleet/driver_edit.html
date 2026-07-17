@@ -1,53 +1,40 @@
 {% extends 'fleet_base.html' %}
 
 {% block title %}Edit {{ driver.name }} | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'fleet:driver_list' %}">Drivers</a></li>
+<li class="breadcrumb-item active" aria-current="page">Edit</li>
+{% endblock %}
 
 {% block content %}
-
-<div class="mb-6">
-    <a href="{% url 'fleet:driver_list' %}" class="text-sm text-base-content/50 hover:text-base-content mb-1 inline-block">← Drivers</a>
-    <h1 class="text-2xl font-bold text-base-content">Edit Driver</h1>
-    <p class="text-sm text-base-content/60 mt-1">{{ driver.name }}</p>
+<div class="mb-3">
+  <a href="{% url 'fleet:driver_list' %}" class="btn btn-sm btn-link px-0"><i class="bi bi-arrow-left me-1"></i>Drivers</a>
+  <h1 class="h3 fw-bold mb-1">Edit Driver</h1>
+  <p class="page-lead mb-0">{{ driver.name }}</p>
 </div>
 
-<div class="card bg-base-100 shadow-sm border border-base-300 max-w-md">
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-
-            {% if form.non_field_errors %}
-            <div role="alert" class="alert alert-error mb-4">
-                {% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}
-            </div>
-            {% endif %}
-
-            <label class="form-control mb-4">
-                <div class="label py-1"><span class="label-text">Full Name</span></div>
-                {{ form.name }}
-                {% if form.name.errors %}<div class="text-error text-xs mt-1">{{ form.name.errors.0 }}</div>{% endif %}
-            </label>
-
-            <label class="form-control mb-4">
-                <div class="label py-1">
-                    <span class="label-text">Phone</span>
-                    <span class="label-text-alt text-base-content/40">Optional</span>
-                </div>
-                {{ form.phone }}
-                {% if form.phone.errors %}<div class="text-error text-xs mt-1">{{ form.phone.errors.0 }}</div>{% endif %}
-            </label>
-
-            <label class="form-control mb-6">
-                <div class="label py-1"><span class="label-text">Status</span></div>
-                {{ form.status }}
-                {% if form.status.errors %}<div class="text-error text-xs mt-1">{{ form.status.errors.0 }}</div>{% endif %}
-            </label>
-
-            <div class="flex gap-3 justify-end">
-                <a href="{% url 'fleet:driver_list' %}" class="btn btn-ghost btn-sm">Cancel</a>
-                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-            </div>
-        </form>
-    </div>
+<div class="card" style="max-width: 32rem;">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>{% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.name.id_for_label }}">Full Name</label>
+        {{ form.name }}{% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.phone.id_for_label }}">Phone <span class="text-muted small">(optional)</span></label>
+        {{ form.phone }}{% if form.phone.errors %}<div class="invalid-feedback d-block">{{ form.phone.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+        {{ form.status }}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <a href="{% url 'fleet:driver_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
 </div>
-
 {% endblock %}
