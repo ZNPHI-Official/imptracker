@@ -115,14 +115,6 @@
               </a>
             </li>
 
-            {% if request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
-            <li class="nav-item">
-              <a class="nav-link fw-500 {% if 'accounts:user_list' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'accounts:user_list' %}">
-                <i class="bi bi-people me-1"></i><span class="d-lg-inline d-md-none">Users</span>
-              </a>
-            </li>
-            {% endif %}
-
             {% if request.user|has_role:"Data Manager" or request.user|has_role:"System Admin" %}
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle fw-500" href="#" id="masterDataDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -489,6 +489,6 @@ def change_password(request):
         update_session_auth_hash(request, request.user)
         
         messages.success(request, 'Your password has been changed successfully.')
-        return redirect('dashboards:dashboard')
-    
+        return redirect('accounts:profile_view')
+
     return render(request, 'accounts/change_password.html')

@@ -1,0 +1,77 @@
+{% load static account_tags %}
+{% comment %}
+Shared account-hub top bar: brand, optional back-to-apps link, and the account
+menu (roles, clusters, My Profile, Support, User Management, Logout).
+Include with `{% include 'accounts/_hub_topbar.html' with show_back=True %}`.
+{% endcomment %}
+<header class="topbar">
+  <div class="topbar-left">
+    <a class="brand-mark" href="{% url 'app_switcher' %}">
+      <img src="{% static 'images/imp_tracker.svg' %}" alt="ZNPHI" onerror="this.onerror=null;this.src='{% static 'images/imp_tracker.png' %}'">
+    </a>
+    {% if show_back %}
+    <a class="back-link" href="{% url 'app_switcher' %}"><i class="bi bi-arrow-left"></i> Apps</a>
+    {% endif %}
+  </div>
+
+  <div class="who">
+    <div class="text-end">
+      <div class="who-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+      <div class="who-sub">Signed in</div>
+    </div>
+
+    <div class="account-menu">
+      <button type="button" class="avatar avatar-btn" id="accountBtn" aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+        {% if request.user.first_name or request.user.last_name %}{{ request.user.first_name|slice:':1'|upper }}{{ request.user.last_name|slice:':1'|upper }}{% else %}{{ request.user.username|slice:':2'|upper }}{% endif %}
+      </button>
+      <div class="account-dropdown" id="accountDropdown" role="menu">
+        <div class="ad-head">
+          <div class="avatar" aria-hidden="true">{% if request.user.first_name or request.user.last_name %}{{ request.user.first_name|slice:':1'|upper }}{{ request.user.last_name|slice:':1'|upper }}{% else %}{{ request.user.username|slice:':2'|upper }}{% endif %}</div>
+          <div>
+            <div class="ad-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div class="ad-sub">{{ request.user.email|default:request.user.username }}</div>
+          </div>
+        </div>
+        <div class="ad-divider"></div>
+        <div class="ad-section">
+          <div class="ad-label">Roles</div>
+          <div class="ad-badges">
+            {% for group in request.user.groups.all %}<span class="ad-badge role">{{ group.name }}</span>{% empty %}<span class="ad-empty">No roles assigned</span>{% endfor %}
+          </div>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">Clusters</div>
+          <div class="ad-badges">
+            {% for cluster in request.user.clusters.all %}<span class="ad-badge cluster">{{ cluster.short_name }}</span>{% empty %}<span class="ad-empty">None assigned</span>{% endfor %}
+          </div>
+        </div>
+        <div class="ad-divider"></div>
+        <a class="ad-item" href="{% url 'accounts:profile_view' %}" role="menuitem"><i class="bi bi-person"></i>My Profile</a>
+        <a class="ad-item" href="{% url 'support:list' %}" role="menuitem"><i class="bi bi-life-preserver"></i>Support</a>
+        {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
+        <a class="ad-item" href="{% url 'accounts:user_list' %}" role="menuitem"><i class="bi bi-people"></i>User Management</a>
+        {% endif %}
+        <div class="ad-divider"></div>
+        <a class="ad-item danger" href="{% url 'logout' %}" role="menuitem"><i class="bi bi-box-arrow-right"></i>Logout</a>
+      </div>
+    </div>
+
+    <a href="{% url 'logout' %}" class="logout-btn" title="Log out" aria-label="Log out"><i class="bi bi-box-arrow-right"></i></a>
+  </div>
+</header>
+
+<script>
+  (function () {
+    var accountBtn = document.getElementById('accountBtn');
+    var accountDropdown = document.getElementById('accountDropdown');
+    if (!accountBtn || !accountDropdown) return;
+    var close = function () { accountDropdown.classList.remove('open'); accountBtn.setAttribute('aria-expanded', 'false'); };
+    accountBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = accountDropdown.classList.toggle('open');
+      accountBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) { if (!accountDropdown.contains(e.target) && e.target !== accountBtn) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  })();
+</script>
