@@ -14,6 +14,9 @@
   <link rel="stylesheet" href="{% static 'css/hub.css' %}">
   <style>
     /* App-switcher-specific styling (chrome lives in hub.css) */
+    /* No background on the top bar for the switcher landing. */
+    .hub .topbar { background: transparent; backdrop-filter: none; border-bottom: none; }
+
     .hero { text-align: center; margin: 3.5rem 0 2.25rem; }
     .eyebrow {
       display: inline-flex; align-items: center; gap: .45rem;
