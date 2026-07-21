@@ -12,6 +12,14 @@ Include with `{% include 'accounts/_hub_topbar.html' with show_back=True %}`.
     {% if show_back %}
     <a class="back-link" href="{% url 'app_switcher' %}"><i class="bi bi-arrow-left"></i> Apps</a>
     {% endif %}
+    {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
+    {% with vname=request.resolver_match.view_name %}
+    <nav class="hub-nav">
+      <a class="hub-nav-link {% if 'accounts:user' in vname %}active{% endif %}" href="{% url 'accounts:user_list' %}"><i class="bi bi-people"></i>Users</a>
+      <a class="hub-nav-link {% if 'accounts:group' in vname %}active{% endif %}" href="{% url 'accounts:group_list' %}"><i class="bi bi-shield-check"></i>User Roles</a>
+    </nav>
+    {% endwith %}
+    {% endif %}
   </div>
 
   <div class="who">
@@ -48,9 +56,6 @@ Include with `{% include 'accounts/_hub_topbar.html' with show_back=True %}`.
         <div class="ad-divider"></div>
         <a class="ad-item" href="{% url 'accounts:profile_view' %}" role="menuitem"><i class="bi bi-person"></i>My Profile</a>
         <a class="ad-item" href="{% url 'support:list' %}" role="menuitem"><i class="bi bi-life-preserver"></i>Support</a>
-        {% if request.user.is_superuser or request.user.is_staff or request.user|has_role:"User Manager" or request.user|has_role:"System Admin" %}
-        <a class="ad-item" href="{% url 'accounts:user_list' %}" role="menuitem"><i class="bi bi-people"></i>User Management</a>
-        {% endif %}
         <div class="ad-divider"></div>
         <a class="ad-item danger" href="{% url 'logout' %}" role="menuitem"><i class="bi bi-box-arrow-right"></i>Logout</a>
       </div>

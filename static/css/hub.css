@@ -20,8 +20,18 @@ body.hub {
 body.hub * { box-sizing: border-box; }
 
 /* --- Top bar ------------------------------------------------------------- */
-.hub .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.1rem 0; }
-.hub .topbar-left { display: flex; align-items: center; gap: 1rem; }
+.hub .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; row-gap: .5rem; flex-wrap: wrap; padding: 1.1rem 0; }
+.hub .topbar-left { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+/* --- Hub main navigation ------------------------------------------------- */
+.hub .hub-nav { display: flex; align-items: center; gap: .2rem; }
+.hub .hub-nav-link {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .86rem; font-weight: 600; color: #475467; text-decoration: none;
+  padding: .42rem .8rem; border-radius: 9px; transition: background .15s ease, color .15s ease;
+}
+.hub .hub-nav-link:hover { background: rgba(27,138,81,.08); color: var(--brand-ink); }
+.hub .hub-nav-link.active { background: rgba(27,138,81,.12); color: var(--brand-ink); }
 .hub .brand-mark { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
 .hub .brand-mark img { height: 30px; }
 .hub .back-link {

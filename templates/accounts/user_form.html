@@ -1,250 +1,190 @@
-{% extends "base.html" %}
+{% extends "accounts/hub_base.html" %}
 {% load static %}
 
 {% block title %}{% if is_edit %}Edit User{% else %}Create User{% endif %}{% endblock %}
 
-{% block breadcrumb %}
-<li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">Users</a></li>
-<li class="breadcrumb-item active" aria-current="page">{% if is_edit %}Edit User{% else %}Create User{% endif %}</li>
+{% block content %}
+<div class="hub-head mb-4">
+  <h1>{% if is_edit %}Edit User: {{ user_obj.username }}{% else %}Create New User{% endif %}</h1>
+  <p>{% if is_edit %}Update this user's details, roles and access{% else %}Add a new user and assign their roles and access{% endif %}</p>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Username <span class="text-danger">*</span></label>
+          <input type="text" name="username" class="form-control" value="{% if is_edit %}{{ user_obj.username }}{% endif %}" required {% if is_edit %}readonly{% endif %}>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Email <span class="text-danger">*</span></label>
+          <input type="email" name="email" class="form-control" value="{% if is_edit %}{{ user_obj.email }}{% endif %}" required>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">First Name <span class="text-danger">*</span></label>
+          <input type="text" name="first_name" class="form-control" value="{% if is_edit %}{{ user_obj.first_name }}{% endif %}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Last Name <span class="text-danger">*</span></label>
+          <input type="text" name="last_name" class="form-control" value="{% if is_edit %}{{ user_obj.last_name }}{% endif %}" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Position</label>
+        <input type="text" name="position" class="form-control" value="{% if is_edit %}{{ user_obj.position }}{% endif %}" placeholder="e.g. Surveillance Officer">
+        <div class="form-text">Shown as the requester's position on fleet transport requests. The user's cluster (below) doubles as their department on transport requests.</div>
+      </div>
+
+      {% if not is_edit %}
+      <div class="mb-3">
+        <label class="form-label">Password <span class="text-danger">*</span></label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      {% endif %}
+
+      <div class="row">
+        <div class="col-12 col-lg-6 mb-3">
+          <label class="form-label">Roles <span class="text-danger">*</span></label>
+          <div id="rolesBox" class="form-control" style="max-height: 280px; overflow-y: auto;">
+            {% if tracker_roles or fleet_roles or other_roles %}
+              {% if tracker_roles %}
+              <div class="fw-semibold text-success small text-uppercase mb-1"><i class="bi bi-speedometer2 me-1"></i>Implementation Tracker</div>
+              {% for role in tracker_roles %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}" {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
+                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
+              </div>
+              {% endfor %}
+              {% endif %}
+              {% if fleet_roles %}
+              <hr class="my-2">
+              <div class="fw-semibold text-primary small text-uppercase mb-1"><i class="bi bi-truck me-1"></i>Fleet Manager</div>
+              {% for role in fleet_roles %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}" {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
+                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
+              </div>
+              {% endfor %}
+              {% endif %}
+              {% if other_roles %}
+              <hr class="my-2">
+              <div class="fw-semibold text-secondary small text-uppercase mb-1"><i class="bi bi-collection me-1"></i>Other</div>
+              {% for role in other_roles %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}" {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
+                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
+              </div>
+              {% endfor %}
+              {% endif %}
+            {% else %}
+              <p class="text-muted mb-0">No roles available</p>
+            {% endif %}
+          </div>
+          <div id="rolesHelp" class="form-text">Select at least one role.</div>
+          <div id="rolesError" class="invalid-feedback d-none">Please select at least one role.</div>
+        </div>
+
+        <div class="col-12 col-lg-6 mb-3">
+          <label class="form-label">Clusters</label>
+          <div class="form-control" style="max-height: 200px; overflow-y: auto;">
+            {% if clusters %}
+              {% for cluster in clusters %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="clusters" value="{{ cluster.id }}" id="cluster{{ cluster.id }}" {% if is_edit and cluster.id in user_cluster_ids %}checked{% endif %}>
+                <label class="form-check-label" for="cluster{{ cluster.id }}">{{ cluster.name }} {{ cluster.short_name }}</label>
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="text-muted mb-0">No clusters available</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3" id="coordinatedFunderSection" style="display: none;">
+        <label class="form-label">Coordinated Funder</label>
+        <select name="coordinated_funder" class="form-select" id="coordinatedFunder">
+          <option value="">Select Funder</option>
+          {% for funder in funders %}<option value="{{ funder.id }}" {% if is_edit and funder.id == user_coordinated_funder_id %}selected{% endif %}>{{ funder.name }}</option>{% endfor %}
+        </select>
+        <div class="form-text">Select the funder that this Project Coordinator will manage.</div>
+      </div>
+
+      <div class="mb-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if is_edit and user_obj.is_active or not is_edit %}checked{% endif %}>
+          <label class="form-check-label" for="is_active">Active</label>
+        </div>
+      </div>
+
+      {% if is_edit %}
+        {% if user_obj.is_superuser or user_obj.is_staff %}
+        <div class="alert alert-warning py-2">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          This account has elevated flags
+          ({% if user_obj.is_superuser %}Superuser{% endif %}{% if user_obj.is_superuser and user_obj.is_staff %}, {% endif %}{% if user_obj.is_staff %}Staff{% endif %})
+          that <strong>bypass role-based permissions</strong> across both applications.
+        </div>
+        {% endif %}
+        {% if request.user.is_superuser and user_obj.pk != request.user.pk %}
+        <div class="mb-3 border rounded p-3 bg-light">
+          <div class="fw-semibold small text-uppercase text-secondary mb-2">Account flags (superusers only)</div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="is_staff" id="is_staff" {% if user_obj.is_staff %}checked{% endif %}>
+            <label class="form-check-label" for="is_staff">Staff — can access the Django admin and manage users</label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="is_superuser" id="is_superuser" {% if user_obj.is_superuser %}checked{% endif %}>
+            <label class="form-check-label" for="is_superuser">Superuser — full access to everything, ignores all roles</label>
+          </div>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="d-flex justify-content-end">
+        <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary me-2">Cancel</a>
+        <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create User{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
-{% block content %}
-<!-- Page Header -->
-<div class="page-header mb-4">
-    <h1 class="page-title">
-        <i class="bi bi-{% if is_edit %}pencil-square{% else %}person-plus{% endif %} me-2"></i>
-        {% if is_edit %}Edit User: {{ user_obj.username }}{% else %}Create New User{% endif %}
-    </h1>
-</div>
-
-<!-- User Form Card -->
-<div class="card">
-    <div class="card-header">
-        <h4 class="mb-0">{% if is_edit %}Edit User: {{ user_obj.username }}{% else %}Create New User{% endif %}</h4>
-    </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Username <span class="text-danger">*</span></label>
-                    <input type="text" name="username" class="form-control" value="{% if is_edit %}{{ user_obj.username }}{% endif %}" required {% if is_edit %}readonly{% endif %}>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Email <span class="text-danger">*</span></label>
-                    <input type="email" name="email" class="form-control" value="{% if is_edit %}{{ user_obj.email }}{% endif %}" required>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">First Name <span class="text-danger">*</span></label>
-                    <input type="text" name="first_name" class="form-control" value="{% if is_edit %}{{ user_obj.first_name }}{% endif %}" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                    <input type="text" name="last_name" class="form-control" value="{% if is_edit %}{{ user_obj.last_name }}{% endif %}" required>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Position</label>
-                <input type="text" name="position" class="form-control" value="{% if is_edit %}{{ user_obj.position }}{% endif %}" placeholder="e.g. Surveillance Officer">
-                <div class="form-text">Shown as the requester's position on fleet transport requests. The user's cluster (below) doubles as their department on transport requests.</div>
-            </div>
-
-            {% if not is_edit %}
-            <div class="mb-3">
-                <label class="form-label">Password <span class="text-danger">*</span></label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            {% endif %}
-
-            <div class="row">
-                <div class="col-12 col-lg-6 mb-3">
-                    <label class="form-label">Roles <span class="text-danger">*</span></label>
-                    <div id="rolesBox" class="form-control" style="max-height: 280px; overflow-y: auto;">
-                        {% if tracker_roles or fleet_roles or other_roles %}
-                            {% if tracker_roles %}
-                            <div class="fw-semibold text-success small text-uppercase mb-1">
-                                <i class="bi bi-speedometer2 me-1"></i>Implementation Tracker
-                            </div>
-                            {% for role in tracker_roles %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}"
-                                    {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
-                                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
-                            </div>
-                            {% endfor %}
-                            {% endif %}
-                            {% if fleet_roles %}
-                            <hr class="my-2">
-                            <div class="fw-semibold text-primary small text-uppercase mb-1">
-                                <i class="bi bi-truck me-1"></i>Fleet Manager
-                            </div>
-                            {% for role in fleet_roles %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}"
-                                    {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
-                                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
-                            </div>
-                            {% endfor %}
-                            {% endif %}
-                            {% if other_roles %}
-                            <hr class="my-2">
-                            <div class="fw-semibold text-secondary small text-uppercase mb-1">
-                                <i class="bi bi-collection me-1"></i>Other
-                            </div>
-                            {% for role in other_roles %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles" value="{{ role.id }}" id="role{{ role.id }}"
-                                    {% if is_edit and role.id in user_role_ids %}checked{% endif %}>
-                                <label class="form-check-label" for="role{{ role.id }}">{{ role.name }}</label>
-                            </div>
-                            {% endfor %}
-                            {% endif %}
-                        {% else %}
-                            <p class="text-muted mb-0">No roles available</p>
-                        {% endif %}
-                    </div>
-                    <div id="rolesHelp" class="form-text">Select at least one role.</div>
-                    <div id="rolesError" class="invalid-feedback d-none">Please select at least one role.</div>
-                </div>
-
-                <div class="col-12 col-lg-6 mb-3">
-                    <label class="form-label">Clusters</label>
-                    <div class="form-control" style="max-height: 200px; overflow-y: auto;">
-                        {% if clusters %}
-                            {% for cluster in clusters %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="clusters" value="{{ cluster.id }}" id="cluster{{ cluster.id }}"
-                                    {% if is_edit and cluster.id in user_cluster_ids %}checked{% endif %}>
-                                <label class="form-check-label" for="cluster{{ cluster.id }}">{{ cluster.name }} {{ cluster.short_name }}</label>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-muted mb-0">No clusters available</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3" id="coordinatedFunderSection" style="display: none;">
-                <label class="form-label">Coordinated Funder</label>
-                <select name="coordinated_funder" class="form-select" id="coordinatedFunder">
-                    <option value="">Select Funder</option>
-                    {% for funder in funders %}
-                    <option value="{{ funder.id }}" {% if is_edit and funder.id == user_coordinated_funder_id %}selected{% endif %}>{{ funder.name }}</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">Select the funder that this Project Coordinator will manage.</div>
-            </div>
-
-            <div class="mb-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if is_edit and user_obj.is_active or not is_edit %}checked{% endif %}>
-                    <label class="form-check-label" for="is_active">Active</label>
-                </div>
-            </div>
-
-            {% if is_edit %}
-                {% if user_obj.is_superuser or user_obj.is_staff %}
-                <div class="alert alert-warning py-2">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    This account has elevated flags
-                    ({% if user_obj.is_superuser %}Superuser{% endif %}{% if user_obj.is_superuser and user_obj.is_staff %}, {% endif %}{% if user_obj.is_staff %}Staff{% endif %})
-                    that <strong>bypass role-based permissions</strong> across both applications.
-                </div>
-                {% endif %}
-                {% if request.user.is_superuser and user_obj.pk != request.user.pk %}
-                <div class="mb-3 border rounded p-3 bg-light">
-                    <div class="fw-semibold small text-uppercase text-secondary mb-2">Account flags (superusers only)</div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" name="is_staff" id="is_staff" {% if user_obj.is_staff %}checked{% endif %}>
-                        <label class="form-check-label" for="is_staff">Staff — can access the Django admin and manage users</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" name="is_superuser" id="is_superuser" {% if user_obj.is_superuser %}checked{% endif %}>
-                        <label class="form-check-label" for="is_superuser">Superuser — full access to everything, ignores all roles</label>
-                    </div>
-                </div>
-                {% endif %}
-            {% endif %}
-
-            <div class="d-flex justify-content-end">
-                <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary me-2">Cancel</a>
-                <button type="submit" class="btn btn-primary">{% if is_edit %}Save Changes{% else %}Create User{% endif %}</button>
-            </div>
-        </form>
-    </div>
-</div>
-
+{% block page_js %}
 <script>
 (() => {
-    const form = document.querySelector('form');
-    if (!form) return;
-
-    const rolesBox = document.getElementById('rolesBox');
-    const rolesError = document.getElementById('rolesError');
-
-    const setRolesValidity = (isValid) => {
-        if (!rolesBox || !rolesError) return;
-        if (isValid) {
-            rolesBox.classList.remove('is-invalid');
-            rolesError.classList.add('d-none');
-            rolesError.classList.remove('d-block');
-        } else {
-            rolesBox.classList.add('is-invalid');
-            rolesError.classList.remove('d-none');
-            rolesError.classList.add('d-block');
-        }
-    };
-
-    const hasAnyRole = () => form.querySelectorAll('input[name="roles"]:checked').length > 0;
-
-    // Clear error as soon as user selects any role.
-    form.addEventListener('change', (e) => {
-        if (e.target && e.target.matches('input[name="roles"]')) {
-            setRolesValidity(hasAnyRole());
-        }
+  const form = document.querySelector('form');
+  if (!form) return;
+  const rolesBox = document.getElementById('rolesBox');
+  const rolesError = document.getElementById('rolesError');
+  const setRolesValidity = (isValid) => {
+    if (!rolesBox || !rolesError) return;
+    if (isValid) { rolesBox.classList.remove('is-invalid'); rolesError.classList.add('d-none'); rolesError.classList.remove('d-block'); }
+    else { rolesBox.classList.add('is-invalid'); rolesError.classList.remove('d-none'); rolesError.classList.add('d-block'); }
+  };
+  const hasAnyRole = () => form.querySelectorAll('input[name="roles"]:checked').length > 0;
+  form.addEventListener('change', (e) => { if (e.target && e.target.matches('input[name="roles"]')) setRolesValidity(hasAnyRole()); });
+  form.addEventListener('submit', (e) => {
+    if (!hasAnyRole()) { e.preventDefault(); e.stopPropagation(); setRolesValidity(false); rolesBox?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    else { setRolesValidity(true); }
+  });
+  const coordinatedFunderSection = document.getElementById('coordinatedFunderSection');
+  const updateFunderVisibility = () => {
+    const projectCoordinatorChecked = Array.from(form.querySelectorAll('input[name="roles"]:checked')).some(cb => {
+      const label = cb.closest('.form-check')?.querySelector('.form-check-label');
+      return label && label.textContent.trim() === 'Project Coordinator';
     });
-
-    form.addEventListener('submit', (e) => {
-        const anyRole = hasAnyRole();
-        if (!anyRole) {
-            e.preventDefault();
-            e.stopPropagation();
-            setRolesValidity(false);
-            // Scroll the roles box into view for convenience.
-            rolesBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            setRolesValidity(true);
-        }
-    });
-
-    // Show/hide coordinated funder section based on Project Coordinator role
-    const coordinatedFunderSection = document.getElementById('coordinatedFunderSection');
-    
-    const updateFunderVisibility = () => {
-        const projectCoordinatorChecked = Array.from(form.querySelectorAll('input[name="roles"]:checked')).some(cb => {
-            const label = cb.closest('.form-check')?.querySelector('.form-check-label');
-            return label && label.textContent.trim() === 'Project Coordinator';
-        });
-        if (coordinatedFunderSection) {
-            coordinatedFunderSection.style.display = projectCoordinatorChecked ? 'block' : 'none';
-        }
-    };
-
-    // Initial check
-    updateFunderVisibility();
-
-    // Update on role change
-    form.addEventListener('change', (e) => {
-        if (e.target && e.target.matches('input[name="roles"]')) {
-            updateFunderVisibility();
-        }
-    });
+    if (coordinatedFunderSection) coordinatedFunderSection.style.display = projectCoordinatorChecked ? 'block' : 'none';
+  };
+  updateFunderVisibility();
+  form.addEventListener('change', (e) => { if (e.target && e.target.matches('input[name="roles"]')) updateFunderVisibility(); });
 })();
 </script>
 {% endblock %}
