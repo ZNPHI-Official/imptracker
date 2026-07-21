@@ -1,0 +1,79 @@
+{% extends 'fleet_base.html' %}
+
+{% block title %}Vehicles | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Vehicles</li>{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1">Fleet Vehicles</h1>
+    <p class="page-lead mb-0">{{ total }} vehicle{{ total|pluralize }} registered</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="?export=csv" class="btn btn-outline-secondary"><i class="bi bi-download me-1"></i>Export CSV</a>
+    <a href="{% url 'fleet:driver_list' %}" class="btn btn-outline-secondary">View Drivers</a>
+    {% if can_edit %}<a href="{% url 'fleet:vehicle_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Vehicle</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">Available</div><div class="h3 stat-value text-success mb-0">{{ count_available }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">On Trip</div><div class="h3 stat-value text-info mb-0">{{ count_on_trip }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">In Maintenance</div><div class="h3 stat-value text-warning mb-0">{{ count_maintenance }}</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card stat-tile h-100"><div class="card-body py-3"><div class="stat-label">Emergency Standby</div><div class="h3 stat-value text-secondary mb-0">{{ count_standby }}</div></div></div></div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width:2rem;">Maint.</th>
+          {% include "partials/sort_header.html" with label="Vehicle" key="plate" %}
+          {% include "partials/sort_header.html" with label="Type" key="type" %}
+          {% include "partials/sort_header.html" with label="Mileage" key="mileage" th_class="text-end" %}
+          {% include "partials/sort_header.html" with label="Km to Service" key="service" th_class="text-end" %}
+          {% include "partials/sort_header.html" with label="Status" key="status" %}
+          {% if can_edit %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for vehicle in vehicles %}
+        <tr>
+          <td>
+            {% if vehicle.maintenance_status == 'green' %}<span class="text-success fs-5 lh-1" title="Service not due ({{ vehicle.km_until_service|floatformat:0 }} km remaining)">&#9679;</span>
+            {% elif vehicle.maintenance_status == 'amber' %}<span class="text-warning fs-5 lh-1" title="Service due soon ({{ vehicle.km_until_service|floatformat:0 }} km remaining)">&#9679;</span>
+            {% elif vehicle.maintenance_status == 'red' %}<span class="text-danger fs-5 lh-1" title="Overdue — blocked from assignment">&#9679;</span>
+            {% else %}<span class="text-muted fs-5 lh-1" title="No service record">&#9675;</span>{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'fleet:vehicle_detail' vehicle.pk %}" class="text-decoration-none">
+              <div class="fw-medium">{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</div>
+              <div class="small text-muted font-monospace">{{ vehicle.license_plate }}</div>
+            </a>
+          </td>
+          <td class="small">{{ vehicle.vehicle_type }}</td>
+          <td class="text-end font-monospace small">{{ vehicle.current_mileage|floatformat:0 }} km</td>
+          <td class="text-end font-monospace small">
+            {% if vehicle.km_until_service is not None %}
+              {% if vehicle.maintenance_status == 'red' %}<span class="text-danger fw-semibold">{{ vehicle.km_until_service }} km</span>
+              {% elif vehicle.maintenance_status == 'amber' %}<span class="text-warning fw-semibold">{{ vehicle.km_until_service }} km</span>
+              {% else %}{{ vehicle.km_until_service }} km{% endif %}
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if vehicle.status == 'Available' %}<span class="badge bg-success-subtle text-success-emphasis">Available</span>
+            {% elif vehicle.status == 'On Trip' %}<span class="badge bg-info-subtle text-info-emphasis">On Trip</span>
+            {% elif vehicle.status == 'In Maintenance' %}<span class="badge bg-warning-subtle text-warning-emphasis">In Maintenance</span>
+            {% else %}<span class="badge bg-secondary-subtle text-secondary-emphasis">Emergency Standby</span>{% endif %}
+          </td>
+          {% if can_edit %}<td class="text-end"><a href="{% url 'fleet:vehicle_edit' vehicle.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a></td>{% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center empty-state py-5">No vehicles registered.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

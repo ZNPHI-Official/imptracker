@@ -1,0 +1,8 @@
+[
+  {"model": "bookings.department", "pk": 1, "fields": {"name": "Surveillance and Disease Intelligence"}},
+  {"model": "bookings.department", "pk": 2, "fields": {"name": "Emergency Preparedness and Response"}},
+  {"model": "bookings.department", "pk": 3, "fields": {"name": "National Public Health Laboratory Services (NPHLS)"}},
+  {"model": "bookings.department", "pk": 4, "fields": {"name": "Public Health Policy, Diplomacy and Communication"}},
+  {"model": "bookings.department", "pk": 5, "fields": {"name": "Field Epidemiology Program"}},
+  {"model": "bookings.department", "pk": 6, "fields": {"name": "Public Health Security System Strengthening"}}
+]

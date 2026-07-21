@@ -1,0 +1,180 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}New Transport Request — ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">New Request</li>{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px;">
+  <div class="mb-3">
+    <h1 class="h3 fw-bold mb-1">New Transport Request</h1>
+    <p class="page-lead mb-0">Complete all fields. The Fleet Manager will review your request.</p>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">{% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold mb-1">Requester Details</h2>
+        <p class="text-muted small mb-3">These details come from your user account.</p>
+
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Requester name</label>
+            <input type="text" value="{{ request.user.get_full_name|default:request.user.username }}" class="form-control" disabled>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Position</label>
+            <input type="text" value="{{ request.user.position|default:'—' }}" class="form-control" disabled>
+          </div>
+          {% with field=form.cluster_choice %}
+          <div class="col-md-4">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <select id="{{ field.id_for_label }}" name="{{ field.html_name }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+              {% for value, label in field.field.choices %}
+              <option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" or field.field.initial|stringformat:"s" == value|stringformat:"s" and not field.value %}selected{% endif %}>{{ label }}</option>
+              {% empty %}<option value="">No cluster assigned</option>{% endfor %}
+            </select>
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+        </div>
+        {% if not form.user_clusters %}
+        <div class="alert alert-warning mt-3 mb-0">Your account has no cluster/unit/department assigned. Please ask a system administrator to assign your cluster before requesting transport.</div>
+        {% endif %}
+
+        {% with field=form.activity_choice %}
+        <div class="mt-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+          <select id="{{ field.id_for_label }}" name="{{ field.html_name }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+            {% for value, label in field.field.choices %}<option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          <div class="form-text">Showing activities assigned to you in the Implementation Tracker. If you can't see the activity you are requesting for, check with your cluster head or activity lead to make sure it is assigned to you.</div>
+          {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        {% endwith %}
+
+        {% with field=form.adhoc_activity %}
+        <div class="mt-3 {% if not field.errors and form.activity_choice.value != 'adhoc' %}d-none{% endif %}" id="adhoc-activity-wrap">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+          <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'' }}" maxlength="300"
+                 class="form-control {% if field.errors %}is-invalid{% endif %}" placeholder="Describe the activity for this trip">
+          {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        {% endwith %}
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold mb-3">Trip Details</h2>
+        <div class="row g-3">
+          {% with field=form.period_from %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="date" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'' }}" class="form-control {% if field.errors %}is-invalid{% endif %}">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+          {% with field=form.period_to %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="date" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'' }}" class="form-control {% if field.errors %}is-invalid{% endif %}">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+
+          {% with field=form.province %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">Province <span class="text-danger">*</span></label>
+            <select id="{{ field.id_for_label }}" name="{{ field.html_name }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+              <option value="">Select province…</option>
+              {% for province in provinces %}<option value="{{ province.id }}" {% if field.value|stringformat:"s" == province.id|stringformat:"s" %}selected{% endif %}>{{ province.name }}</option>{% endfor %}
+            </select>
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+          {% with field=form.district %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">District <span class="text-danger">*</span></label>
+            <select id="{{ field.id_for_label }}" name="{{ field.html_name }}" class="form-select {% if field.errors %}is-invalid{% endif %}">
+              <option value="">Select province first…</option>
+              {% for district in field.field.queryset %}<option value="{{ district.id }}" {% if field.value|stringformat:"s" == district.id|stringformat:"s" %}selected{% endif %}>{{ district.name }}</option>{% endfor %}
+            </select>
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+
+          {% with field=form.destination %}
+          <div class="col-12">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="text" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'' }}" class="form-control {% if field.errors %}is-invalid{% endif %}" placeholder="Specific location or address">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+
+          {% with field=form.num_vehicles %}
+          <div class="col-md-4">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'1' }}" min="1" class="form-control {% if field.errors %}is-invalid{% endif %}">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+          {% with field=form.num_drivers %}
+          <div class="col-md-4">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'1' }}" min="1" class="form-control {% if field.errors %}is-invalid{% endif %}">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+          {% with field=form.num_passengers %}
+          <div class="col-md-4">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-danger">*</span></label>
+            <input type="number" id="{{ field.id_for_label }}" name="{{ field.html_name }}" value="{{ field.value|default:'1' }}" min="1" class="form-control {% if field.errors %}is-invalid{% endif %}">
+            {% for e in field.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+        </div>
+
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" name="{{ form.is_emergency.html_name }}" id="id_is_emergency" {% if form.is_emergency.value %}checked{% endif %}>
+          <label class="form-check-label" for="id_is_emergency">This is an emergency request</label>
+          <div class="form-text">Emergency requests are flagged and shown first in the Fleet Manager queue.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{% url 'bookings:my_requests' %}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary" {% if not form.user_clusters %}disabled{% endif %}>Submit Request</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const activitySelect = document.getElementById('{{ form.activity_choice.id_for_label }}');
+  const adhocWrap = document.getElementById('adhoc-activity-wrap');
+  if (activitySelect && adhocWrap) {
+    const toggle = () => adhocWrap.classList.toggle('d-none', activitySelect.value !== 'adhoc');
+    activitySelect.addEventListener('change', toggle);
+    toggle();
+  }
+  const provinceSelect = document.getElementById('{{ form.province.id_for_label }}');
+  const districtSelect = document.getElementById('{{ form.district.id_for_label }}');
+  if (provinceSelect && districtSelect) {
+    provinceSelect.addEventListener('change', () => {
+      districtSelect.innerHTML = '<option value="">Loading…</option>';
+      fetch("{% url 'bookings:district_options' %}?province=" + encodeURIComponent(provinceSelect.value))
+        .then(r => r.text())
+        .then(html => { districtSelect.innerHTML = html || '<option value="">Select province first…</option>'; })
+        .catch(() => { districtSelect.innerHTML = '<option value="">Failed to load districts</option>'; });
+    });
+  }
+})();
+</script>
+{% endblock %}

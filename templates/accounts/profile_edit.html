@@ -1,78 +1,50 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends "accounts/hub_base.html" %}
 
-{% block title %}My Profile{% endblock %}
-
-{% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">My Profile</li>
-{% endblock %}
+{% block title %}Edit Profile{% endblock %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="page-header mb-4">
-    <h1 class="page-title">
-        <i class="bi bi-person-circle me-2"></i>My Profile
-    </h1>
-    <p class="page-subtitle text-muted">Update your personal information</p>
+<div class="hub-head mb-4">
+  <h1>Edit Profile</h1>
+  <p>Update your personal information</p>
 </div>
 
-<!-- Profile Form Card -->
 <div class="row justify-content-center">
-    <div class="col-lg-8 col-md-10">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Profile Information</h4>
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">Profile Information</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" value="{{ user_obj.username }}" disabled readonly>
+            <div class="form-text">Username cannot be changed</div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="first_name" class="form-label">First Name</label>
+              <input type="text" name="first_name" id="first_name" class="form-control" value="{{ user_obj.first_name }}">
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" value="{{ user_obj.username }}" disabled readonly>
-                        <div class="form-text">Username cannot be changed</div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="first_name" class="form-label">First Name</label>
-                            <input type="text" name="first_name" id="first_name" class="form-control" value="{{ user_obj.first_name }}">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="last_name" class="form-label">Last Name</label>
-                            <input type="text" name="last_name" id="last_name" class="form-control" value="{{ user_obj.last_name }}">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" name="email" id="email" class="form-control" value="{{ user_obj.email }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Roles</label>
-                        <div>
-                            {% if user_obj.groups.all %}
-                                {% for group in user_obj.groups.all %}
-                                    <span class="badge bg-primary me-1">{{ group.name }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-muted">No roles assigned</span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'accounts:profile_view' %}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left me-1"></i>Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle me-1"></i>Save Changes
-                        </button>
-                    </div>
-                </form>
+            <div class="col-md-6 mb-3">
+              <label for="last_name" class="form-label">Last Name</label>
+              <input type="text" name="last_name" id="last_name" class="form-control" value="{{ user_obj.last_name }}">
             </div>
-        </div>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" name="email" id="email" class="form-control" value="{{ user_obj.email }}">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Roles</label>
+            <div>{% for group in user_obj.groups.all %}<span class="badge role-badge me-1">{{ group.name }}</span>{% empty %}<span class="text-muted">No roles assigned</span>{% endfor %}</div>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{% url 'accounts:profile_view' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Save Changes</button>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

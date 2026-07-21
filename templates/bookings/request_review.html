@@ -1,0 +1,127 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Review Request #{{ tr.pk }} — ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'bookings:request_queue' %}">Request Queue</a></li>
+<li class="breadcrumb-item active" aria-current="page">Review #{{ tr.pk }}</li>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px;">
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+    <div>
+      <a href="{% url 'bookings:request_queue' %}" class="btn btn-sm btn-link px-0 mb-1"><i class="bi bi-arrow-left me-1"></i>Request Queue</a>
+      <h1 class="h4 fw-bold mb-1">{{ tr.programme_activity }}</h1>
+      <p class="text-muted small mb-0">Request #{{ tr.pk }} &middot; {{ tr.requester_name }} &middot; {{ tr.department.name }}</p>
+    </div>
+    <div class="text-end">
+      {% if tr.status == 'Approved' %}<span class="badge bg-success-subtle text-success-emphasis">Approved</span>{% else %}<span class="badge bg-warning-subtle text-warning-emphasis">Submitted</span>{% endif %}
+      {% if tr.is_emergency %}<span class="badge bg-danger-subtle text-danger-emphasis d-block mt-1">Emergency</span>{% endif %}
+    </div>
+  </div>
+
+  {% if is_late %}
+  <div class="alert alert-warning d-flex align-items-center" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i><span><strong>Late booking:</strong> This trip starts in less than 2 weeks.</span></div>
+  {% endif %}
+
+  {% if overlapping %}
+  <div class="alert alert-warning d-flex align-items-start" role="alert">
+    <i class="bi bi-info-circle-fill me-2 mt-1"></i>
+    <div><strong>Coordination opportunity:</strong> {{ overlapping|length }} other trip{{ overlapping|length|pluralize }} to {{ tr.district.name }} in this window.{% if tr.coordination_acknowledged %} The requester acknowledged this and provided a reason.{% endif %}</div>
+  </div>
+  {% if tr.coordination_note %}
+  <div class="card mb-3"><div class="card-body py-3"><p class="small fw-medium mb-1">Requester's note on coordination:</p><p class="small text-muted mb-0">{{ tr.coordination_note }}</p></div></div>
+  {% endif %}
+  {% endif %}
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h2 class="h6 fw-semibold mb-3">Trip Details</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-sm-3 text-muted">Requester</dt><dd class="col-sm-9 fw-medium">{{ tr.requester_name }}</dd>
+        <dt class="col-sm-3 text-muted">Position</dt><dd class="col-sm-9">{{ tr.position|default:"—" }}</dd>
+        <dt class="col-sm-3 text-muted">Department</dt><dd class="col-sm-9">{{ tr.department.name }}</dd>
+        <dt class="col-sm-3 text-muted">Period</dt><dd class="col-sm-9">{{ tr.period_from }} &rarr; {{ tr.period_to }}</dd>
+        <dt class="col-sm-3 text-muted">Destination</dt><dd class="col-sm-9">{{ tr.destination }}</dd>
+        <dt class="col-sm-3 text-muted">District / Province</dt><dd class="col-sm-9">{{ tr.district.name }}, {{ tr.province.name }}</dd>
+        <dt class="col-sm-3 text-muted">Vehicles needed</dt><dd class="col-sm-9">{{ tr.num_vehicles }}</dd>
+        <dt class="col-sm-3 text-muted">Drivers needed</dt><dd class="col-sm-9">{{ tr.num_drivers }}</dd>
+        <dt class="col-sm-3 text-muted">Passengers</dt><dd class="col-sm-9">{{ tr.num_passengers }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h2 class="h6 fw-semibold mb-3">Available Vehicles</h2>
+      {% if vehicles_with_info %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Plate</th><th>Type / Year</th><th>Mileage</th><th>Maintenance</th><th>Next service due</th><th>Returning from</th></tr></thead>
+          <tbody>
+            {% for item in vehicles_with_info %}{% with v=item.vehicle rt=item.return_trip %}
+            <tr>
+              <td class="font-monospace fw-medium">{{ v.license_plate }}</td>
+              <td class="small">{{ v.vehicle_type }} {{ v.year }}</td>
+              <td class="small">{{ v.current_mileage|floatformat:0 }} km</td>
+              <td>{% if v.maintenance_status == 'green' %}<span class="badge bg-success-subtle text-success-emphasis">OK</span>{% elif v.maintenance_status == 'amber' %}<span class="badge bg-warning-subtle text-warning-emphasis">Due soon</span>{% elif v.maintenance_status == 'unknown' %}<span class="badge bg-secondary-subtle text-secondary-emphasis">No baseline</span>{% endif %}</td>
+              <td class="small text-muted">{% if v.last_service_mileage %}{{ v.last_service_mileage|add:v.maintenance_interval_km }} km{% else %}—{% endif %}</td>
+              <td class="small text-muted">{% if rt %}{{ rt.district.name }} by {{ rt.period_to }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endwith %}{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="small text-muted mb-0">No vehicles available for this period. All vehicles are either booked, under maintenance, or overdue for service.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>{% endif %}
+
+    {% if vehicles_with_info %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold mb-3">Assign Vehicles &amp; Drivers</h2>
+        {% for vehicle_field, driver_field in form.field_groups %}
+        <div class="border rounded p-3 mb-3">
+          <p class="small fw-semibold text-muted mb-2">Slot {{ forloop.counter }}</p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="{{ vehicle_field.id_for_label }}">{{ vehicle_field.label }}</label>
+              {{ vehicle_field }}{% for error in vehicle_field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ driver_field.id_for_label }}">{{ driver_field.label }}</label>
+              {{ driver_field }}{% for error in driver_field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <label class="form-label" for="{{ form.admin_comment.id_for_label }}">{{ form.admin_comment.label }}</label>
+        {{ form.admin_comment }}
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <button type="submit" name="action" value="reject" class="btn btn-outline-danger" onclick="return confirm('{% if is_editing %}Reject this request and release its assigned vehicles?{% else %}Reject this request?{% endif %}')">
+        {% if is_editing %}Reject &amp; unassign{% else %}Reject request{% endif %}
+      </button>
+      {% if vehicles_with_info %}
+      <button type="submit" name="action" value="approve" class="btn btn-success">{% if is_editing %}Save changes{% else %}Approve &amp; assign{% endif %}</button>
+      {% else %}
+      <button type="button" class="btn btn-success" disabled title="No available vehicles to assign">Approve &amp; assign</button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

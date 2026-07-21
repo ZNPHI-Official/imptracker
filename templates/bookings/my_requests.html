@@ -1,0 +1,59 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}My Requests — ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">My Requests</li>{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1">My Requests</h1>
+    <p class="page-lead mb-0">{{ requests|length }} request{{ requests|length|pluralize }} submitted</p>
+  </div>
+  <a href="{% url 'bookings:request_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-circle me-2"></i>New Request
+  </a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Submitted</th><th>Programme / Activity</th><th>Destination</th><th>Period</th><th>Status</th><th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr>
+          <td class="text-muted small text-nowrap">{{ req.date_of_request }}</td>
+          <td>
+            <a href="{% url 'bookings:request_detail' req.pk %}" class="fw-medium text-decoration-none">{{ req.programme_activity }}</a>
+            {% if req.is_emergency %}<span class="badge bg-danger-subtle text-danger-emphasis ms-1">Emergency</span>{% endif %}
+          </td>
+          <td class="small">{{ req.district.name }}, {{ req.province.name }}</td>
+          <td class="small text-nowrap">{{ req.period_from }} &rarr; {{ req.period_to }}</td>
+          <td>{% include 'bookings/_status_badge.html' with status=req.status %}</td>
+          <td class="text-end text-nowrap">
+            <a href="{% url 'bookings:request_detail' req.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+            {% if req.status == 'Submitted' or req.status == 'Approved' or req.status == 'In Progress' %}
+            <form method="post" action="{% url 'bookings:request_cancel' req.pk %}" class="d-inline" onsubmit="return confirm('Cancel this request?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center empty-state py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            <p class="mb-3">No requests yet.</p>
+            <a href="{% url 'bookings:request_create' %}" class="btn btn-primary btn-sm">Submit your first request</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "fleet_base.html" %}
+
+{% block title %}Coordination Opportunity — ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'bookings:request_create' %}">New Request</a></li>
+<li class="breadcrumb-item active" aria-current="page">Coordination</li>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px;">
+  {% if is_late %}
+  <div class="alert alert-warning d-flex align-items-center" role="alert"><i class="bi bi-exclamation-triangle-fill me-2"></i><span><strong>Late booking:</strong> Your trip starts in less than 2 weeks. Please allow extra processing time.</span></div>
+  {% endif %}
+
+  <div class="alert alert-warning d-flex align-items-start" role="alert">
+    <i class="bi bi-info-circle-fill fs-4 me-2"></i>
+    <div>
+      <h3 class="h6 fw-bold mb-1">Coordination opportunity</h3>
+      <p class="small mb-0">There {{ overlapping|length|pluralize:"is,are" }} already <strong>{{ overlapping|length }} trip{{ overlapping|length|pluralize }}</strong> planned to <strong>{{ form.cleaned_data.district }}</strong> around your dates. Consider reaching out to coordinate and share a vehicle.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h2 class="h6 fw-semibold mb-3">Overlapping trips</h2>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Requester</th><th>Department</th><th>Dates</th><th>Passengers</th><th>Spaces left</th></tr></thead>
+          <tbody>
+            {% for trip in overlapping %}
+            <tr>
+              <td class="fw-medium">{{ trip.requester_name }}</td>
+              <td class="small text-muted">{{ trip.department.name }}</td>
+              <td class="small">{{ trip.period_from }} &rarr; {{ trip.period_to }}</td>
+              <td class="small">{{ trip.num_passengers }}</td>
+              <td class="small">{% for assignment in trip.assignments.all %}{% if assignment.vehicle %}{{ assignment.vehicle.seating_capacity|add:trip.num_passengers|add:"-"|add:trip.num_passengers }}{% endif %}{% empty %}—{% endfor %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h2 class="h6 fw-semibold mb-3">Your request summary</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-sm-4 text-muted">Requester</dt><dd class="col-sm-8 fw-medium">{{ form.cleaned_data.requester_name }}</dd>
+        <dt class="col-sm-4 text-muted">Department</dt><dd class="col-sm-8">{{ form.cleaned_data.department }}</dd>
+        <dt class="col-sm-4 text-muted">District</dt><dd class="col-sm-8">{{ form.cleaned_data.district }}, {{ form.cleaned_data.province }}</dd>
+        <dt class="col-sm-4 text-muted">Period</dt><dd class="col-sm-8">{{ form.cleaned_data.period_from }} &rarr; {{ form.cleaned_data.period_to }}</dd>
+        <dt class="col-sm-4 text-muted">Passengers</dt><dd class="col-sm-8">{{ form.cleaned_data.num_passengers }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if ack_form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for error in ack_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>{% endif %}
+    <div class="card">
+      <div class="card-body">
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="{{ ack_form.acknowledged.html_name }}" id="id_acknowledged" {% if ack_form.acknowledged.value %}checked{% endif %}>
+          <label class="form-check-label fw-medium" for="id_acknowledged">{{ ack_form.acknowledged.label }}</label>
+          {% for error in ack_form.acknowledged.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ ack_form.coordination_note.id_for_label }}">{{ ack_form.coordination_note.label }}</label>
+          <textarea id="{{ ack_form.coordination_note.id_for_label }}" name="{{ ack_form.coordination_note.html_name }}" rows="3" class="form-control" placeholder="{{ ack_form.coordination_note.help_text }}">{{ ack_form.coordination_note.value|default:'' }}</textarea>
+        </div>
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'bookings:request_create' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Edit request</a>
+          <button type="submit" class="btn btn-warning">Submit anyway</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

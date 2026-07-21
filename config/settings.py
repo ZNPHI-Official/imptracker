@@ -48,7 +48,11 @@ INSTALLED_APPS = [
  'django.contrib.admin','django.contrib.auth','django.contrib.contenttypes',
  'django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
  'import_export',
+ 'django_htmx',
+ 'django_crontab',
  'accounts','activities','masters','uploads','audit','dashboards','support',
+ # Fleet Manager apps (merged from ZNPHI-Fleet-Manager)
+ 'bookings','fleet','dashboard','settings_app',
 ]
 AUTH_USER_MODEL='accounts.User'
 
@@ -68,6 +72,7 @@ MIDDLEWARE = [
 	'django.middleware.security.SecurityMiddleware',
 	'whitenoise.middleware.WhiteNoiseMiddleware',
 	'django.contrib.sessions.middleware.SessionMiddleware',
+	'django_htmx.middleware.HtmxMiddleware',
 	'django.middleware.common.CommonMiddleware',
 	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -86,6 +91,8 @@ TEMPLATES = [
 				'django.template.context_processors.request',
 				'django.contrib.auth.context_processors.auth',
 				'django.contrib.messages.context_processors.messages',
+				'accounts.context_processors.user_roles',
+				'bookings.context_processors.pending_request_count',
 			],
 		},
 	},
@@ -140,14 +147,20 @@ TASKS = {
 }
 # Locale / TZ defaults
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('TIME_ZONE', 'Africa/Lusaka')
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/dashboard/"
+LOGIN_REDIRECT_URL = "/apps/"
 LOGOUT_REDIRECT_URL = "/login/"
+
+# Fleet Manager scheduled tasks (django-crontab only registers on Linux via
+# `manage.py crontab add`; on Windows/dev run `manage.py run_transitions` manually)
+CRONJOBS = [
+	('0 1 * * *', 'django.core.management.call_command', ['run_transitions']),
+]
 
 
 #JET_DEFAULT_THEME = 'light-gray' # green, light-violet, light-green, light-blue, light-gray

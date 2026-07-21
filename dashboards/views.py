@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.db.models import Sum, Count, Q
 from activities.models import Activity
@@ -772,7 +773,19 @@ def dashboard(request):
 @login_required
 def my_space(request):
     """Personal view of activities assigned to the current user."""
-    qs = Activity.objects.filter(deleted=False, responsible_officer=request.user)
+    from django.db.models import DecimalField, F, Value
+    from django.db.models.functions import Coalesce
+    from accounts.views import user_has_fleet_access
+    from bookings.models import Province, TransportRequest
+
+    qs = (
+        Activity.objects
+        .filter(deleted=False, responsible_officer=request.user)
+        .annotate(balance=F('total_budget') - Coalesce(
+            F('disbursed_amount'),
+            Value(0, output_field=DecimalField(max_digits=14, decimal_places=2)),
+        ))
+    )
 
     today = date.today()
     current_quarter = ((today.month - 1) // 3) + 1
@@ -792,6 +805,55 @@ def my_space(request):
     def sum_money(qset, field):
         return float(qset.aggregate(total=Sum(field)).get('total') or 0)
 
+    # Fleet integration: transport requests linked to the user's activities
+    # (by anyone) plus the user's own requests, and what the modal needs.
+    has_fleet_access = user_has_fleet_access(request.user)
+    activity_requests = (
+        TransportRequest.objects
+        .filter(activity__in=qs)
+        .select_related('district', 'province')
+        .order_by('-created_at')
+    )
+    # Latest request per activity, for the transport column on activity tables.
+    latest_request_by_activity = {}
+    # Existing pending/approved requests per activity, so the quick-request
+    # modal can warn about duplicates before the user submits another.
+    existing_requests_by_activity = {}
+    for tr in activity_requests:
+        latest_request_by_activity.setdefault(tr.activity_id, tr)
+        if tr.status in ('Submitted', 'Approved') and tr.activity_id not in existing_requests_by_activity:
+            existing_requests_by_activity[str(tr.activity_id)] = {
+                'status': tr.status,
+                'requester': tr.requester_name,
+                'dates': f'{tr.period_from.strftime("%d %b %Y")} – {tr.period_to.strftime("%d %b %Y")}',
+                'destination': f'{tr.destination}, {tr.district.name}',
+                'num_vehicles': tr.num_vehicles,
+                'submitted_on': tr.created_at.strftime('%d %b %Y'),
+                'detail_url': reverse('bookings:request_detail', args=[tr.pk]),
+            }
+
+    my_requests = (
+        TransportRequest.objects
+        .filter(submitted_by=request.user)
+        .select_related('district', 'province', 'activity')
+        .order_by('-created_at')
+    )
+    upcoming_trips = [
+        tr for tr in my_requests
+        if tr.status in ('Approved', 'In Progress') and tr.period_to >= today
+    ]
+
+    recent_assigned = list(qs.order_by('planned_month')[:20])
+    for activity in recent_assigned:
+        activity.latest_transport_request = latest_request_by_activity.get(activity.pk)
+
+    # Split so the quarter activities and the "other" activities don't overlap.
+    def _in_current_quarter(a):
+        return a.quarter == current_quarter and a.year == today.year
+
+    quarter_activities = [a for a in recent_assigned if _in_current_quarter(a)]
+    other_activities = [a for a in recent_assigned if not _in_current_quarter(a)]
+
     context = {
         'today': today,
         'current_quarter': current_quarter,
@@ -806,7 +868,20 @@ def my_space(request):
         'due_quarter_count': due_quarter_qs.count(),
         'due_quarter_budget': sum_money(due_quarter_qs, 'total_budget'),
         'due_quarter_disbursed': sum_money(due_quarter_qs, 'disbursed_amount'),
-        'recent_assigned': qs.order_by('planned_month')[:20],
+        'due_quarter_remaining': sum_money(due_quarter_qs, 'total_budget') - sum_money(due_quarter_qs, 'disbursed_amount'),
+        'recent_assigned': recent_assigned,
+        'quarter_activities': quarter_activities,
+        'other_activities': other_activities,
+        'other_assigned_count': len(other_activities),
+        # Fleet integration
+        'has_fleet_access': has_fleet_access,
+        'my_transport_requests': my_requests[:8],
+        'upcoming_trips': upcoming_trips[:5],
+        'upcoming_trip_count': len(upcoming_trips),
+        'provinces': Province.objects.all() if has_fleet_access else [],
+        'modal_activities': qs.order_by('-year', 'activity_id') if has_fleet_access else [],
+        'user_clusters': list(request.user.clusters.all()) if has_fleet_access else [],
+        'existing_requests_map': existing_requests_by_activity,
     }
 
     return render(request, 'dashboards/my_space.html', context)

@@ -1,0 +1,117 @@
+{% extends 'fleet_base.html' %}
+
+{% block title %}Fleet Gantt | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Gantt</li>{% endblock %}
+
+{% block extra_head %}
+<style>
+  .gantt-grid { display: grid; grid-template-columns: 190px repeat(14, 1fr); }
+  .gantt-block {
+    position: absolute; top: 7px; bottom: 7px; border-radius: 4px; overflow: hidden;
+    white-space: nowrap; font-size: 0.68rem; font-weight: 600; display: flex;
+    align-items: center; padding: 0 6px; min-width: 5px; text-decoration: none; transition: filter 0.12s;
+  }
+  a.gantt-block:hover { filter: brightness(0.9); cursor: pointer; }
+  .gantt-block-approved    { background: #16a34a; color: #fff; }
+  .gantt-block-inprogress  { background: #0ea5e9; color: #fff; }
+  .gantt-block-completed   { background: #64748b; color: #fff; }
+  .gantt-block-submitted   { background: #f1f5f9; color: #475569; border: 1.5px dashed #94a3b8; box-sizing: border-box; }
+  .gantt-separator {
+    position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to right,
+      transparent 0, transparent calc(100% / 14 - 1px),
+      #e9edf1 calc(100% / 14 - 1px), #e9edf1 calc(100% / 14));
+  }
+  .gantt-today-col { position:absolute; top:0; bottom:0; width: calc(100% / 14); background: rgba(27,138,81,.08); pointer-events:none; }
+  .gantt-cell { border-right: 1px solid #eef1f4; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h3 fw-bold mb-1">Fleet Gantt</h1>
+  <p class="page-lead mb-0">Vehicle bookings — 14-day rolling view</p>
+</div>
+
+<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <a href="?from={{ prev_start|date:'Y-m-d' }}{% if selected_province_id %}&province={{ selected_province_id }}{% endif %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i> Prev</a>
+    <span class="fw-semibold small font-monospace">{{ window_start|date:"d M" }} &ndash; {{ window_end|date:"d M Y" }}</span>
+    <a href="?from={{ next_start|date:'Y-m-d' }}{% if selected_province_id %}&province={{ selected_province_id }}{% endif %}" class="btn btn-outline-secondary btn-sm">Next <i class="bi bi-chevron-right"></i></a>
+    <a href="?{% if selected_province_id %}province={{ selected_province_id }}{% endif %}" class="btn btn-sm btn-link text-muted">Today</a>
+  </div>
+  <form method="get">
+    <input type="hidden" name="from" value="{{ window_start|date:'Y-m-d' }}">
+    <select name="province" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">All provinces</option>
+      {% for province in provinces %}<option value="{{ province.pk }}"{% if selected_province_id == province.pk %} selected{% endif %}>{{ province.name }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="d-flex flex-wrap gap-3 mb-2 small text-muted">
+  <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#16a34a"></span> Approved</span>
+  <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#0ea5e9"></span> In Progress</span>
+  <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#64748b"></span> Completed</span>
+  <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#f1f5f9;border:1px dashed #94a3b8"></span> Submitted (pending)</span>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <div style="min-width: 900px;">
+      <div class="gantt-grid border-bottom" style="border-bottom-width:2px !important;">
+        <div class="px-3 py-2 small fw-semibold text-muted text-uppercase gantt-cell d-flex align-items-end">Vehicle</div>
+        {% for day in days %}
+        <div class="py-2 text-center small gantt-cell {% if day.is_today %}bg-success bg-opacity-10{% elif day.is_weekend %}bg-light{% endif %}">
+          <div class="fw-medium {% if day.is_today %}text-success{% else %}text-muted{% endif %}">{{ day.date|date:"D" }}</div>
+          <div class="{% if day.is_today %}text-success fw-bold{% else %}text-muted{% endif %}">{{ day.date|date:"j" }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% for row in vehicle_rows %}
+      <div class="gantt-grid border-bottom" style="{% cycle '' 'background:#fafbfc;' %}">
+        <div class="px-3 gantt-cell d-flex align-items-center" style="height: 46px;">
+          <div>
+            <div class="small fw-medium lh-sm">{{ row.vehicle.make }} {{ row.vehicle.model }}</div>
+            <div class="small text-muted font-monospace lh-sm">{{ row.vehicle.license_plate }}</div>
+          </div>
+        </div>
+        <div style="grid-column: 2 / 16; position: relative; height: 46px;">
+          <div class="gantt-separator"></div>
+          {% if today_in_window %}<div class="gantt-today-col" style="left: calc({{ today_col_num }} * 100% / 14);"></div>{% endif %}
+          {% for booking in row.bookings %}
+          {% if can_interact %}
+          <a href="{% url 'bookings:request_detail' booking.pk %}" class="gantt-block gantt-block-{{ booking.status|lower|cut:' ' }}" style="left: {{ booking.left_pct }}%; width: {{ booking.width_pct }}%;" title="{{ booking.label }} — {{ booking.status }}">{{ booking.label }}</a>
+          {% else %}
+          <div class="gantt-block gantt-block-{{ booking.status|lower|cut:' ' }}" style="left: {{ booking.left_pct }}%; width: {{ booking.width_pct }}%;" title="{{ booking.label }} — {{ booking.status }}">{{ booking.label }}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="py-5 text-center text-muted small">No vehicles registered.</div>
+      {% endfor %}
+
+      {% if pending_blocks %}
+      <div class="gantt-grid border-top" style="border-top-width:2px !important; background:#fff8e1;">
+        <div class="px-3 gantt-cell d-flex align-items-center" style="height: 46px;">
+          <div><div class="small fw-semibold text-warning lh-sm">Pending</div><div class="small text-muted lh-sm">Unassigned</div></div>
+        </div>
+        <div style="grid-column: 2 / 16; position: relative; height: 46px;">
+          <div class="gantt-separator"></div>
+          {% if today_in_window %}<div class="gantt-today-col" style="left: calc({{ today_col_num }} * 100% / 14);"></div>{% endif %}
+          {% for booking in pending_blocks %}
+          {% if can_interact %}
+          <a href="{% url 'bookings:request_detail' booking.pk %}" class="gantt-block gantt-block-submitted" style="left: {{ booking.left_pct }}%; width: {{ booking.width_pct }}%;" title="{{ booking.label }} — pending approval">{{ booking.label }}</a>
+          {% else %}
+          <div class="gantt-block gantt-block-submitted" style="left: {{ booking.left_pct }}%; width: {{ booking.width_pct }}%;" title="{{ booking.label }} — pending approval">{{ booking.label }}</div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -10,6 +10,50 @@ import json
 
 from services.notifications import send_user_created_notification
 
+# Group names that grant access to each application on the post-login switcher.
+FLEET_GROUPS = ['Requester', 'Fleet Manager', 'Dashboard Viewer', 'Superadmin']
+TRACKER_GROUPS = ['System Admin', 'Data Manager', 'Activity Manager', 'Project Coordinator', 'Viewer', 'User Manager']
+
+
+def user_has_fleet_access(user):
+    """Check if user may enter the Fleet Manager app"""
+    return user.is_superuser or user.groups.filter(name__in=FLEET_GROUPS).exists()
+
+
+def user_has_tracker_access(user):
+    """Check if user may enter the Implementation Tracker app"""
+    return user.is_superuser or user.groups.filter(name__in=TRACKER_GROUPS).exists()
+
+
+@login_required
+def app_switcher(request):
+    """Post-login landing: pick between Implementation Tracker and Fleet Manager.
+
+    Users with access to exactly one app are sent straight into it; users with
+    access to both (or neither) see the switcher page.
+    """
+    has_tracker = user_has_tracker_access(request.user)
+    has_fleet = user_has_fleet_access(request.user)
+    if has_tracker and not has_fleet:
+        return redirect('dashboards:dashboard')
+    if has_fleet and not has_tracker:
+        return redirect('fleet_home')
+    return render(request, 'accounts/app_switcher.html', {
+        'has_tracker': has_tracker,
+        'has_fleet': has_fleet,
+    })
+
+
+def grouped_roles():
+    """Split all groups into Implementation Tracker, Fleet Manager, and other
+    roles so user forms can present them as separate sections."""
+    all_roles = list(Group.objects.all().order_by('name'))
+    tracker = [r for r in all_roles if r.name in TRACKER_GROUPS]
+    fleet = [r for r in all_roles if r.name in FLEET_GROUPS]
+    other = [r for r in all_roles if r.name not in TRACKER_GROUPS and r.name not in FLEET_GROUPS]
+    return tracker, fleet, other
+
+
 def can_manage_users(user):
     """Check if user can manage users: superuser, staff, or in User Manager/System Admin groups"""
     return user.is_superuser or user.is_staff or user.groups.filter(name__in=['User Manager', 'System Admin']).exists()
@@ -25,6 +69,17 @@ def can_see_user(viewer, target):
 def is_system_admin(user):
     """Check if user is System Admin"""
     return user.is_superuser or user.groups.filter(name='System Admin').exists()
+
+@login_required
+@user_passes_test(can_manage_users)
+def user_detail(request, pk):
+    """Read-only view of a single user, with management actions."""
+    user = get_object_or_404(User, pk=pk)
+    if not can_see_user(request.user, user):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("You do not have permission to view this user.")
+    return render(request, 'accounts/user_detail.html', {'user_obj': user})
+
 
 @login_required
 @user_passes_test(can_manage_users)
@@ -130,7 +185,10 @@ def user_create(request):
         
         # Assign roles (required)
         user.groups.set(Group.objects.filter(id__in=role_ids))
-        
+
+        # Position (used to prefill fleet transport requests)
+        user.position = (request.POST.get('position') or '').strip()
+
         # Assign clusters
         cluster_ids = request.POST.getlist('clusters')
         if cluster_ids:
@@ -150,12 +208,14 @@ def user_create(request):
         messages.success(request, f'User "{username}" created successfully.')
         return redirect('accounts:user_list')
     
-    roles = Group.objects.all().order_by('name')
+    tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
     funders = Funder.objects.filter(active=True).order_by('name')
     context = {
-        'roles': roles,
+        'tracker_roles': tracker_roles,
+        'fleet_roles': fleet_roles,
+        'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
     }
@@ -178,6 +238,12 @@ def user_edit(request, pk):
         user.last_name = (request.POST.get('last_name') or '').strip()
         user.is_active = request.POST.get('is_active') == 'on'
 
+        # Account flags bypass all role checks, so only superusers may change
+        # them, and never on their own account (prevents self-lockout).
+        if request.user.is_superuser and user.pk != request.user.pk:
+            user.is_staff = request.POST.get('is_staff') == 'on'
+            user.is_superuser = request.POST.get('is_superuser') == 'on'
+
         if not user.email:
             messages.error(request, 'Email is required.')
             return redirect('accounts:user_edit', pk=pk)
@@ -196,6 +262,9 @@ def user_edit(request, pk):
             messages.error(request, 'At least one role is required.')
             return redirect('accounts:user_edit', pk=pk)
         user.groups.set(Group.objects.filter(id__in=role_ids))
+
+        # Position (used to prefill fleet transport requests)
+        user.position = (request.POST.get('position') or '').strip()
         
         # Assign clusters
         cluster_ids = request.POST.getlist('clusters')
@@ -217,17 +286,19 @@ def user_edit(request, pk):
         messages.success(request, f'User "{user.username}" updated successfully.')
         return redirect('accounts:user_list')
     
-    roles = Group.objects.all().order_by('name')
+    tracker_roles, fleet_roles, other_roles = grouped_roles()
     clusters = Cluster.objects.all().order_by('short_name')
     from masters.models import Funder
     funders = Funder.objects.filter(active=True).order_by('name')
     user_role_ids = list(user.groups.values_list('id', flat=True))
     user_cluster_ids = list(user.clusters.values_list('id', flat=True))
     user_coordinated_funder_id = user.coordinated_funder.id if user.coordinated_funder else None
-    
+
     context = {
         'user_obj': user,
-        'roles': roles,
+        'tracker_roles': tracker_roles,
+        'fleet_roles': fleet_roles,
+        'other_roles': other_roles,
         'clusters': clusters,
         'funders': funders,
         'user_role_ids': user_role_ids,
@@ -429,6 +500,6 @@ def change_password(request):
         update_session_auth_hash(request, request.user)
         
         messages.success(request, 'Your password has been changed successfully.')
-        return redirect('dashboards:dashboard')
-    
+        return redirect('accounts:profile_view')
+
     return render(request, 'accounts/change_password.html')

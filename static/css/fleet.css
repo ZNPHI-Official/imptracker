@@ -1,0 +1,108 @@
+/* ==========================================================================
+   Fleet Manager — premium enterprise skin
+   Scoped to `body.fleet-app` so it never affects the Implementation Tracker.
+   ========================================================================== */
+
+body.fleet-app {
+  background: #f6f7f9 !important;
+  color: #1f2733;
+  font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fleet-app h1, .fleet-app h2, .fleet-app h3,
+.fleet-app .h1, .fleet-app .h2, .fleet-app .h3 { letter-spacing: -0.02em; }
+
+/* --- Page heading helper ------------------------------------------------- */
+.fleet-app .page-lead { color: #667085; }
+
+/* --- Cards --------------------------------------------------------------- */
+.fleet-app .card {
+  background: #fff;
+  border: 1px solid #e7e9ee;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+}
+.fleet-app .card.border-0 { border: 1px solid #e7e9ee !important; }
+.fleet-app .card .card-body { padding: 1.3rem 1.4rem; }
+
+/* --- Stat tiles ---------------------------------------------------------- */
+.fleet-app .stat-tile { transition: transform .18s ease, box-shadow .18s ease; }
+.fleet-app .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgba(16,24,40,.18); }
+.fleet-app .stat-value { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.02em; }
+.fleet-app .stat-label { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: #667085; font-weight: 600; }
+
+/* --- Tables -------------------------------------------------------------- */
+.fleet-app .table { margin: 0; --bs-table-bg: transparent; color: #2b3542; }
+.fleet-app .table > thead th {
+  font-size: .72rem; letter-spacing: .04em; text-transform: uppercase;
+  color: #667085; font-weight: 600; background: #fafbfc;
+  border-bottom: 1px solid #eceef1; padding: .72rem .9rem; white-space: nowrap;
+}
+.fleet-app .table > tbody td { padding: .78rem .9rem; border-color: #f0f1f4; vertical-align: middle; }
+.fleet-app .table > tbody tr:last-child td { border-bottom: 0; }
+.fleet-app .table-hover > tbody > tr { transition: background .12s ease; }
+.fleet-app .table-hover > tbody > tr:hover > * { background: #f5faf7; }
+.fleet-app .table-danger, .fleet-app .table-danger > * { --bs-table-bg: #fef3f2; --bs-table-color: #7a271a; }
+.fleet-app .font-monospace { font-variant-numeric: tabular-nums; }
+
+/* --- Buttons ------------------------------------------------------------- */
+.fleet-app .btn { border-radius: 9px; font-weight: 600; }
+.fleet-app .btn-sm { border-radius: 8px; }
+.fleet-app .btn-primary {
+  --bs-btn-bg: #189150; --bs-btn-border-color: #189150;
+  background: linear-gradient(180deg, #21a05e, #16824b);
+  border: 0; box-shadow: 0 5px 14px -7px rgba(27, 138, 81, .65);
+}
+.fleet-app .btn-primary:hover, .fleet-app .btn-primary:focus { filter: brightness(1.05); background: linear-gradient(180deg, #21a05e, #16824b); }
+.fleet-app .btn-primary:active { filter: brightness(.95); }
+.fleet-app .btn-outline-primary { --bs-btn-color: #16824b; --bs-btn-border-color: #bfe3cd; --bs-btn-hover-bg: #16824b; --bs-btn-hover-border-color: #16824b; --bs-btn-active-bg: #12613a; }
+.fleet-app .btn-outline-secondary { --bs-btn-color: #475467; --bs-btn-border-color: #d7dbe0; --bs-btn-hover-bg: #344051; --bs-btn-hover-border-color: #344051; }
+.fleet-app .btn-success { --bs-btn-bg: #16824b; --bs-btn-border-color: #16824b; --bs-btn-hover-bg: #12613a; --bs-btn-hover-border-color: #12613a; }
+.fleet-app .text-primary { color: #16824b !important; }
+.fleet-app a { text-underline-offset: 2px; }
+.fleet-app .btn-link { --bs-btn-color: #16824b; --bs-btn-hover-color: #12613a; text-decoration: none; }
+
+/* --- Forms --------------------------------------------------------------- */
+.fleet-app .form-label { font-weight: 600; font-size: .82rem; color: #344051; margin-bottom: .35rem; }
+.fleet-app .form-control, .fleet-app .form-select {
+  border-radius: 9px; border-color: #dfe3e8; color: #1f2733; padding: .5rem .75rem;
+}
+.fleet-app .form-control:focus, .fleet-app .form-select:focus {
+  border-color: #1B8A51; box-shadow: 0 0 0 3px rgba(27, 138, 81, .15);
+}
+.fleet-app .form-check-input:checked { background-color: #1B8A51; border-color: #1B8A51; }
+.fleet-app .form-check-input:focus { border-color: #1B8A51; box-shadow: 0 0 0 3px rgba(27, 138, 81, .15); }
+.fleet-app .input-group-text { border-radius: 9px; background: #f4f6f8; border-color: #dfe3e8; color: #667085; }
+
+/* --- Nav pills (queue filter tabs) -------------------------------------- */
+.fleet-app .nav-pills .nav-link { color: #475467; border-radius: 9px; font-weight: 600; font-size: .9rem; padding: .4rem .9rem; }
+.fleet-app .nav-pills .nav-link:hover { background: #eef1f4; }
+.fleet-app .nav-pills .nav-link.active { background: #1B8A51; color: #fff; box-shadow: 0 5px 14px -7px rgba(27,138,81,.6); }
+.fleet-app .nav-pills .nav-link.active .badge { background: rgba(255,255,255,.25) !important; color: #fff !important; }
+
+/* --- Breadcrumb ---------------------------------------------------------- */
+.fleet-app .breadcrumb { font-size: .8rem; }
+.fleet-app .breadcrumb a { color: #16824b; text-decoration: none; }
+.fleet-app .breadcrumb a:hover { text-decoration: underline; }
+
+/* --- Progress ------------------------------------------------------------ */
+.fleet-app .progress { background: #eef1f4; border-radius: 999px; }
+.fleet-app .progress-bar { background-color: #1B8A51; }
+
+/* --- Badges: soften Bootstrap subtle badges into pills ------------------- */
+.fleet-app .badge { font-weight: 600; border-radius: 7px; padding: .32em .6em; letter-spacing: .01em; }
+
+/* --- Definition lists (detail pages) ------------------------------------ */
+.fleet-app dl.row dt { font-weight: 500; }
+
+/* --- Section chips (icon badges in headers) ------------------------------ */
+.fleet-app .sec-chip {
+  width: 34px; height: 34px; border-radius: 10px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 1rem; flex: 0 0 auto;
+  background: rgba(27, 138, 81, .1); color: #16824b;
+}
+
+/* --- Empty states -------------------------------------------------------- */
+.fleet-app .empty-state { color: #98a2b3; }
+.fleet-app .empty-state .bi { color: #cbd2da; }

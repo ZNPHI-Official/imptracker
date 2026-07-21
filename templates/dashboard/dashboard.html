@@ -1,0 +1,214 @@
+{% extends 'fleet_base.html' %}
+{% load static %}
+
+{% block title %}Dashboard | ZNPHI Fleet Manager{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Dashboard</li>{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #district-map { height: 480px; border-radius: 12px; }
+  .kpi-value { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+  <div>
+    <h1 class="h3 fw-bold mb-1">Fleet Dashboard</h1>
+    <p class="page-lead mb-0">{{ period_start|date:"d M Y" }} &ndash; {{ period_end|date:"d M Y" }}</p>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="btn-group btn-group-sm flex-wrap" role="group">
+      {% for key, label in interval_options %}<a href="?interval={{ key }}" class="btn {% if interval == key %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ label }}</a>{% endfor %}
+    </div>
+    <a href="?interval={{ interval }}&export=csv" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>Export CSV</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <p class="stat-label mb-1">Fleet Utilisation</p>
+      <p class="display-6 fw-bold text-success kpi-value mb-0">{{ utilization_pct }}%</p>
+      <p class="small text-muted">{{ vehicle_days_used }} of {{ total_vehicle_days }} vehicle-days used</p>
+      {% if most_used %}<hr class="my-2"><p class="small text-muted mb-1">Most active</p><ul class="list-unstyled mb-0">{% for row in most_used %}<li class="d-flex justify-content-between small"><span class="font-monospace text-muted">{{ row.vehicle.license_plate }}</span><span class="fw-semibold">{{ row.days }}d</span></li>{% endfor %}</ul>{% endif %}
+      {% if least_used %}<hr class="my-2"><p class="small text-muted mb-1">Idle this period</p><ul class="list-unstyled mb-0">{% for row in least_used %}<li class="small font-monospace text-muted">{{ row.vehicle.license_plate }}</li>{% endfor %}</ul>{% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <p class="stat-label mb-1">Request Volume</p>
+      <p class="display-6 fw-bold text-success kpi-value mb-0">{{ total_requests }}</p>
+      <p class="small text-muted">requests submitted</p>
+      <div class="mt-2 small">
+        <div class="d-flex justify-content-between"><span class="text-muted">Approved / completed</span><span class="fw-semibold text-success">{{ approved_or_active_count }}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Rejected</span><span class="fw-semibold text-danger">{{ rejected_count }}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Avg lead time</span><span class="fw-semibold">{{ avg_lead_time }} days</span></div>
+        <div class="d-flex justify-content-between {% if late_pct > 20 %}text-warning{% endif %}"><span class="text-muted">Late bookings (&lt;2 wks)</span><span class="fw-semibold">{{ late_count }} ({{ late_pct }}%)</span></div>
+        {% if emergency_count %}<div class="d-flex justify-content-between text-danger"><span>Emergency requests</span><span class="fw-semibold">{{ emergency_count }}</span></div>{% endif %}
+      </div>
+    </div></div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <p class="stat-label mb-1">Maintenance Health</p>
+      <div class="d-flex gap-3 my-2">
+        <div class="text-center"><div class="h4 fw-bold text-success mb-0">{{ green_count }}</div><div class="small text-muted">Good</div></div>
+        <div class="text-center"><div class="h4 fw-bold text-warning mb-0">{{ amber_count }}</div><div class="small text-muted">Amber</div></div>
+        <div class="text-center"><div class="h4 fw-bold text-danger mb-0">{{ red_count }}</div><div class="small text-muted">Overdue</div></div>
+        {% if unknown_count %}<div class="text-center"><div class="h4 fw-bold text-muted mb-0">{{ unknown_count }}</div><div class="small text-muted">No data</div></div>{% endif %}
+      </div>
+      <div class="small d-flex justify-content-between"><span class="text-muted">Maintenance spend</span><span class="fw-semibold">ZMW {{ maint_cost_in_period|floatformat:0 }}</span></div>
+      {% if upcoming_service_list %}<hr class="my-2"><p class="small text-muted mb-1">Due soon (&le;1,000 km)</p><ul class="list-unstyled mb-0">{% for v in upcoming_service_list %}<li class="d-flex justify-content-between small"><span class="font-monospace text-muted">{{ v.license_plate }}</span><span class="fw-semibold text-warning">{{ v.km_until_service }} km left</span></li>{% endfor %}</ul>{% endif %}
+    </div></div>
+  </div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <p class="stat-label mb-3">Finance</p>
+  <div class="row g-4">
+    <div class="col-md-6">
+      <p class="display-6 fw-bold text-success kpi-value mb-0">ZMW {{ total_cost|floatformat:0 }}</p>
+      <p class="small text-muted mb-3">total spend this period</p>
+      <div class="small">
+        <div class="d-flex justify-content-between"><span class="text-muted">Fuel</span><span class="fw-semibold">ZMW {{ fuel_total|floatformat:0 }}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Maintenance</span><span class="fw-semibold">ZMW {{ finance_maint_total|floatformat:0 }}</span></div>
+        <hr class="my-1">
+        <div class="d-flex justify-content-between"><span class="text-muted">Cost per trip</span><span class="fw-semibold">ZMW {{ cost_per_trip|floatformat:0 }}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Cost per vehicle</span><span class="fw-semibold">ZMW {{ cost_per_vehicle|floatformat:0 }}</span></div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <p class="small fw-semibold mb-2">Projected maintenance</p>
+      <div class="btn-group btn-group-sm flex-wrap mb-3" role="group">
+        {% for h in projection_horizons %}<button type="button" class="btn proj-horizon-btn {% if forloop.first %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-count="{{ h.vehicle_count }}" data-cost="{{ h.cost }}" data-label="{{ h.label }}">{{ h.short }}</button>{% endfor %}
+      </div>
+      <div class="small">
+        <div class="d-flex justify-content-between"><span class="text-muted">Vehicles due in <span id="proj-horizon-label">{{ projection_horizons.0.label }}</span></span><span id="proj-vehicle-count" class="fw-semibold">{{ projection_horizons.0.vehicle_count }}</span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">Est. maintenance cost</span><span class="fw-semibold text-warning">ZMW <span id="proj-cost-val">{{ projection_horizons.0.cost }}</span></span></div>
+      </div>
+      <details class="mt-3">
+        <summary class="small text-muted" style="cursor:pointer;">&#x2139; How is this estimated?</summary>
+        <div class="small text-muted mt-2 border-start border-2 ps-2">
+          <p class="mb-1"><strong>km remaining</strong> = (last service mileage + maintenance interval) &minus; current mileage</p>
+          <p class="mb-1"><strong>Monthly km rate</strong>: derived from fill-up mileage records when &ge;2 exist (mileage difference &divide; days &times; 30.4). Falls back to vehicle lifetime average if fewer records exist.</p>
+          <p class="mb-1"><strong>Months to service</strong> = km remaining &divide; monthly km rate</p>
+          <p class="mb-1"><strong>Estimated cost per service</strong>: fleet average of all historical maintenance records &mdash; currently ZMW {{ avg_maint_cost|floatformat:0 }}.</p>
+          <p class="mb-0 text-muted">Overdue vehicles (km remaining &lt; 0) are counted immediately in all horizons.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</div></div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-body">
+      <h3 class="h6 fw-semibold mb-3">Requests by Department</h3>
+      <canvas id="dept-chart" height="200"></canvas>
+    </div></div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-body">
+      <h3 class="h6 fw-semibold mb-3">Top Destination Districts</h3>
+      {% if top_districts %}
+      <ul class="list-unstyled mb-0">
+        {% for d in top_districts %}
+        <li class="mb-2">
+          <div class="d-flex justify-content-between small mb-1"><span>{{ d.district__name }}</span><span class="fw-semibold">{{ d.count }}</span></div>
+          <div class="progress" style="height:6px;"><div class="progress-bar" style="width: {{ d.bar_pct }}%"></div></div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="small text-muted mb-0">No completed trips in this period.</p>{% endif %}
+    </div></div>
+  </div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h3 class="h6 fw-semibold mb-0">Trip Density by District</h3>
+    <div class="d-flex flex-wrap gap-1 align-items-center">
+      <span class="small text-muted me-1">Month:</span>
+      <button onclick="loadMap(null)" id="month-btn-all" class="btn btn-sm btn-primary month-btn">All ({{ interval }})</button>
+      {% for month in available_months %}<button onclick="loadMap('{{ month.key }}')" id="month-btn-{{ month.key }}" class="btn btn-sm btn-outline-secondary month-btn">{{ month.label }}</button>{% endfor %}
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-3 mb-3 small text-muted">
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#f7f7f7;border:1px solid #ccc"></span> 0</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#c7e9c0"></span> 1–5</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#74c476"></span> 6–10</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#41ab5d"></span> 11–20</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#238b45"></span> 21–30</span>
+    <span class="d-inline-flex align-items-center gap-1"><span class="d-inline-block rounded-1" style="width:12px;height:12px;background:#005a32"></span> 30+</span>
+  </div>
+  <div id="district-map"></div>
+</div></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const labels = {{ dept_labels_json|safe }};
+  const data   = {{ dept_counts_json|safe }};
+  if (!labels.length) return;
+  new Chart(document.getElementById('dept-chart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: '#189150', borderRadius: 5 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 30 } } } },
+  });
+})();
+
+const GEOJSON_URL      = "{% static 'geojson/zambia_districts.geojson' %}";
+const DISTRICT_API_URL = "{% url 'dashboard:district_data' %}";
+const CURRENT_INTERVAL = "{{ interval }}";
+let leafletMap = null, geojsonLayer = null, districtGeoJSON = null;
+
+function getColor(n) {
+  return n > 30 ? '#005a32' : n > 20 ? '#238b45' : n > 10 ? '#41ab5d' : n > 5 ? '#74c476' : n > 0 ? '#c7e9c0' : '#f7f7f7';
+}
+async function loadMap(month) {
+  document.querySelectorAll('.month-btn').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); });
+  const activeBtn = document.getElementById(month ? 'month-btn-' + month : 'month-btn-all');
+  if (activeBtn) { activeBtn.classList.add('btn-primary'); activeBtn.classList.remove('btn-outline-secondary'); }
+  const url = new URL(DISTRICT_API_URL, window.location.origin);
+  if (month) { url.searchParams.set('month', month); } else { url.searchParams.set('interval', CURRENT_INTERVAL); }
+  const [counts, geo] = await Promise.all([
+    fetch(url).then(r => r.json()),
+    districtGeoJSON ? Promise.resolve(districtGeoJSON) : fetch(GEOJSON_URL).then(r => r.json()),
+  ]);
+  districtGeoJSON = geo;
+  if (!leafletMap) {
+    leafletMap = L.map('district-map', { zoomControl: true }).setView([-13.5, 28.0], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19,
+    }).addTo(leafletMap);
+  }
+  if (geojsonLayer) leafletMap.removeLayer(geojsonLayer);
+  geojsonLayer = L.geoJSON(geo, {
+    style: feature => ({ fillColor: getColor(counts[feature.properties.adm2_name] || 0), fillOpacity: 0.75, color: '#6b7280', weight: 0.6 }),
+    onEachFeature: (feature, layer) => {
+      const name = feature.properties.adm2_name, prov = feature.properties.adm1_name, count = counts[name] || 0;
+      layer.bindTooltip(`<strong>${name}</strong> <span style="color:#6b7280;font-size:0.85em">${prov}</span><br>${count} trip${count !== 1 ? 's' : ''}`, { sticky: true });
+    },
+  }).addTo(leafletMap);
+}
+document.addEventListener('DOMContentLoaded', () => loadMap(null));
+
+document.querySelectorAll('.proj-horizon-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.proj-horizon-btn').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); });
+    btn.classList.add('btn-primary'); btn.classList.remove('btn-outline-secondary');
+    document.getElementById('proj-horizon-label').textContent = btn.dataset.label;
+    document.getElementById('proj-vehicle-count').textContent = btn.dataset.count;
+    document.getElementById('proj-cost-val').textContent = parseInt(btn.dataset.cost, 10).toLocaleString();
+  });
+});
+</script>
+{% endblock %}

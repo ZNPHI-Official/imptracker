@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{# Fleet Manager shares the Implementation Tracker's Bootstrap chrome (navbar,
+   breadcrumb, footer). A premium skin (static/css/fleet.css) is layered on top,
+   scoped to the `fleet-app` body class. Only the nav links differ. #}
+
+{% block body_class %}fleet-app{% endblock %}
+
+{% block breadcrumb_home %}<li class="breadcrumb-item"><a href="{% url 'fleet_home' %}">Fleet</a></li>{% endblock %}
+
+{% block nav_items %}
+{% with vname=request.resolver_match.view_name %}
+<ul class="navbar-nav ms-auto">
+  {% if is_fleet_manager or is_superadmin %}
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'bookings:request_queue' or vname == 'bookings:request_review' %}active{% endif %}" href="{% url 'bookings:request_queue' %}">
+      <i class="bi bi-inbox me-1"></i><span class="d-lg-inline d-md-none">Request Queue</span>
+      {% if pending_request_count %}<span class="badge rounded-pill bg-warning text-dark ms-1">{{ pending_request_count }}</span>{% endif %}
+    </a>
+  </li>
+  {% endif %}
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'bookings:request_create' or vname == 'bookings:coordination_nudge' %}active{% endif %}" href="{% url 'bookings:request_create' %}">
+      <i class="bi bi-plus-circle me-1"></i><span class="d-lg-inline d-md-none">New Request</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'bookings:my_requests' or vname == 'bookings:request_detail' %}active{% endif %}" href="{% url 'bookings:my_requests' %}">
+      <i class="bi bi-list-check me-1"></i><span class="d-lg-inline d-md-none">My Requests</span>
+    </a>
+  </li>
+  {% if is_fleet_manager or is_dashboard_viewer or is_superadmin %}
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if 'fleet:vehicle' in vname %}active{% endif %}" href="{% url 'fleet:vehicle_list' %}">
+      <i class="bi bi-truck me-1"></i><span class="d-lg-inline d-md-none">Vehicles</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if 'fleet:driver' in vname %}active{% endif %}" href="{% url 'fleet:driver_list' %}">
+      <i class="bi bi-person-badge me-1"></i><span class="d-lg-inline d-md-none">Drivers</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'dashboard:gantt' %}active{% endif %}" href="{% url 'dashboard:gantt' %}">
+      <i class="bi bi-bar-chart-steps me-1"></i><span class="d-lg-inline d-md-none">Gantt</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'dashboard:dashboard' %}active{% endif %}" href="{% url 'dashboard:dashboard' %}">
+      <i class="bi bi-speedometer2 me-1"></i><span class="d-lg-inline d-md-none">Dashboard</span>
+    </a>
+  </li>
+  {% endif %}
+  {% if is_fleet_manager or is_superadmin %}
+  <li class="nav-item">
+    <a class="nav-link fw-500 {% if vname == 'settings_app:settings' %}active{% endif %}" href="{% url 'settings_app:settings' %}">
+      <i class="bi bi-gear me-1"></i><span class="d-lg-inline d-md-none">Settings</span>
+    </a>
+  </li>
+  {% endif %}
+  <li class="nav-item">
+    <a class="nav-link fw-500" href="{% url 'app_switcher' %}" title="Switch application">
+      <i class="bi bi-grid-3x3-gap me-1"></i><span class="d-lg-inline d-md-none">Apps</span>
+    </a>
+  </li>
+</ul>
+{% endwith %}
+{% endblock %}
+
+{% block page_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/fleet.css' %}">
+{% block extra_head %}{% endblock %}
+{% endblock %}
+
+{% block page_js %}{% block extra_scripts %}{% endblock %}{% endblock %}
