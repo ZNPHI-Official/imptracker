@@ -17,48 +17,19 @@
 
 <!-- Settings Cards Grid -->
 <div class="row g-4 mb-4">
-  <!-- Users Card -->
-  <div class="col-md-6 col-lg-4">
-    <div class="card h-100 stats-card border-primary">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div>
-            <h5 class="card-title">
-              <i class="bi bi-people me-2 text-primary"></i>Users
-            </h5>
-          </div>
-          <span class="badge bg-primary">{{ user_count }}</span>
-        </div>
-        <p class="text-muted mb-3">Manage system users and access</p>
-        <div class="d-grid gap-2">
-          <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Users
-          </a>
-          {% comment %} <a href="{% url 'accounts:user_create' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-person-plus me-1"></i>Create User
-          </a> {% endcomment %}
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Funders Card -->
   <div class="col-md-6 col-lg-4">
     <div class="card h-100 stats-card border-success">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-bank me-2 text-success"></i>Funders
-            </h5>
+            <h5 class="card-title"><i class="bi bi-bank me-2 text-success"></i>Funders</h5>
           </div>
           <span class="badge bg-success">{{ funders_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage funding organizations</p>
         <div class="d-grid">
-          <a href="{% url 'masters:funder_list' %}" class="btn btn-outline-success btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Funders
-          </a>
+          <a href="{% url 'masters:funder_list' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-list me-1"></i>Manage Funders</a>
         </div>
       </div>
     </div>
@@ -70,17 +41,13 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-clipboard-check me-2 text-info"></i>Statuses
-            </h5>
+            <h5 class="card-title"><i class="bi bi-clipboard-check me-2 text-info"></i>Statuses</h5>
           </div>
           <span class="badge bg-info">{{ statuses_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage activity statuses</p>
         <div class="d-grid">
-          <a href="{% url 'masters:status_list' %}" class="btn btn-outline-info btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Statuses
-          </a>
+          <a href="{% url 'masters:status_list' %}" class="btn btn-outline-info btn-sm"><i class="bi bi-list me-1"></i>Manage Statuses</a>
         </div>
       </div>
     </div>
@@ -92,17 +59,13 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-currency-dollar me-2 text-warning"></i>Currencies
-            </h5>
+            <h5 class="card-title"><i class="bi bi-currency-dollar me-2 text-warning"></i>Currencies</h5>
           </div>
           <span class="badge bg-warning">{{ currencies_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage currency types</p>
         <div class="d-grid">
-          <a href="{% url 'masters:currency_list' %}" class="btn btn-outline-warning btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Currencies
-          </a>
+          <a href="{% url 'masters:currency_list' %}" class="btn btn-outline-warning btn-sm"><i class="bi bi-list me-1"></i>Manage Currencies</a>
         </div>
       </div>
     </div>
@@ -114,17 +77,13 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-collection me-2 text-secondary"></i>Clusters
-            </h5>
+            <h5 class="card-title"><i class="bi bi-collection me-2 text-secondary"></i>Clusters</h5>
           </div>
           <span class="badge bg-secondary">{{ clusters_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage organizational clusters</p>
         <div class="d-grid">
-          <a href="{% url 'masters:cluster_list' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Clusters
-          </a>
+          <a href="{% url 'masters:cluster_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list me-1"></i>Manage Clusters</a>
         </div>
       </div>
     </div>
@@ -136,17 +95,13 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-basket me-2 text-dark"></i>Procurement Types
-            </h5>
+            <h5 class="card-title"><i class="bi bi-basket me-2 text-dark"></i>Procurement Types</h5>
           </div>
           <span class="badge bg-dark">{{ procurement_types_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage procurement categories</p>
         <div class="d-grid">
-          <a href="{% url 'masters:procurement_type_list' %}" class="btn btn-outline-dark btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Procurement Types
-          </a>
+          <a href="{% url 'masters:procurement_type_list' %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-list me-1"></i>Manage Procurement Types</a>
         </div>
       </div>
     </div>
@@ -158,49 +113,16 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
-            <h5 class="card-title">
-              <i class="bi bi-diagram-3 me-2 text-primary"></i>Categories
-            </h5>
+            <h5 class="card-title"><i class="bi bi-diagram-3 me-2 text-primary"></i>Categories</h5>
           </div>
           <span class="badge bg-primary">{{ categories_count }}</span>
         </div>
         <p class="text-muted mb-3">Manage main and sub categories for activities ({{ sub_categories_count }} sub categories)</p>
         <div class="d-grid">
-          <a href="{% url 'masters:category_list' %}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Categories
-          </a>
+          <a href="{% url 'masters:category_list' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-list me-1"></i>Manage Categories</a>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- Roles Card -->
-   {% if request.user.is_staff or request.user.is_superuser %}
-  <div class="col-md-6 col-lg-4">
-    <div class="card h-100 stats-card border-danger">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div>
-            <h5 class="card-title">
-              <i class="bi bi-shield-check me-2 text-danger"></i>Roles
-            </h5>
-          </div>
-        </div>
-        <p class="text-muted mb-3">Manage roles and permissions</p>
-        <div class="d-grid">
-          <a href="{% url 'accounts:group_list' %}" class="btn btn-outline-danger btn-sm">
-            <i class="bi bi-list me-1"></i>Manage Roles
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-      </div>
-    </div>
-  </div>
-
 </div>
 {% endblock %}

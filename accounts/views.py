@@ -72,6 +72,17 @@ def is_system_admin(user):
 
 @login_required
 @user_passes_test(can_manage_users)
+def user_detail(request, pk):
+    """Read-only view of a single user, with management actions."""
+    user = get_object_or_404(User, pk=pk)
+    if not can_see_user(request.user, user):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("You do not have permission to view this user.")
+    return render(request, 'accounts/user_detail.html', {'user_obj': user})
+
+
+@login_required
+@user_passes_test(can_manage_users)
 def user_list(request):
     """List all users with search and filter"""
     query = request.GET.get('q', '')

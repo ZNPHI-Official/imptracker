@@ -20,7 +20,13 @@ body.hub {
 body.hub * { box-sizing: border-box; }
 
 /* --- Top bar ------------------------------------------------------------- */
-.hub .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; row-gap: .5rem; flex-wrap: wrap; padding: 1.1rem 0; }
+.hub .topbar {
+  position: sticky; top: 0; z-index: 1030;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; row-gap: .5rem; flex-wrap: wrap;
+  padding: .9rem 0;
+  background: rgba(246,247,249,.86); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
 .hub .topbar-left { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 
 /* --- Hub main navigation ------------------------------------------------- */
