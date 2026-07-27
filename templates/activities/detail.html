@@ -118,13 +118,17 @@
                             <div class="d-flex align-items-center">
                                 <p class="detail-value mb-0" id="officer-display">
                                     {% if activity.responsible_officer %}
-                                    {% if activity.responsible_officer.get_full_name %}
-                                    {{ activity.responsible_officer.get_full_name }}
+                                        {% with officer=activity.responsible_officer %}
+                                            {% if officer.get_full_name %}
+                                                {{ officer.get_full_name }}
+                                            {% elif officer.username %}
+                                                {{ officer.username }}
+                                            {% else %}
+                                                Not assigned
+                                            {% endif %}
+                                        {% endwith %}
                                     {% else %}
-                                    {{ activity.responsible_officer.username }}
-                                    {% endif %}
-                                    {% else %}
-                                    Not assigned
+                                        Not assigned
                                     {% endif %}
                                 </p>
                                 {% if perms.activities.change_activity %}
@@ -208,7 +212,11 @@
                                         <h6 class="mb-1">{{ log.action }}</h6>
                                         <p class="text-muted small mb-1">{{ log.change_description }}</p>
                                         <small class="text-muted">
+                                            {% if log.user %}
                                             <i class="bi bi-person me-1"></i>{{ log.user.get_full_name|default:log.user.username }}
+                                            {% else %}
+                                            <i class="bi bi-person me-1"></i>System
+                                            {% endif %}
                                             <i class="bi bi-clock ms-2 me-1"></i>{{ log.timestamp|date:"d M Y, H:i" }}
                                         </small>
                                     </div>

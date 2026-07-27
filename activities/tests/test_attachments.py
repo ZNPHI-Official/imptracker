@@ -5,6 +5,7 @@ Test suite for Activity Attachment functionality
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.template.loader import render_to_string
 from django.core.files.uploadedfile import SimpleUploadedFile
 from datetime import datetime, date
 from activities.models import Activity, ActivityAttachment
@@ -243,6 +244,34 @@ class ActivityAttachmentTestCase(TestCase):
         )
         
         self.assertEqual(response.status_code, 403)
+
+    def test_detail_template_renders_when_audit_log_user_is_missing(self):
+        """The detail page should not crash if an audit log has no linked user."""
+        AuditLog.objects.create(
+            user=None,
+            action='Status changed',
+            object_repr='Test Activity',
+            activity_id=self.activity.pk,
+            change_description='Status changed'
+        )
+
+        context = {
+            'activity': self.activity,
+            'audit_logs': AuditLog.objects.filter(activity_id=self.activity.pk).order_by('-timestamp'),
+            'all_users': [],
+            'all_statuses': [],
+            'users': [],
+            'statuses': [],
+            'clusters': [],
+            'funders': [],
+            'currencies': [],
+            'years': [],
+            'can_edit': True,
+            'can_delete': True,
+        }
+
+        rendered = render_to_string('activities/detail.html', context)
+        self.assertIn('System', rendered)
 
 
 class ActivityAttachmentIntegrationTestCase(TestCase):
